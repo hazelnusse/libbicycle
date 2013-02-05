@@ -16,6 +16,8 @@
 # degrees of freedom; in the latter case, it has 7 degrees of freedom.
 from sympy import symbols, Matrix, zeros, sqrt, trigsimp
 from sympy.physics.mechanics import *
+from sympy.core.numbers import Zero
+import numpy as np
 Vector.simp = False
 from wheelassemblygyrostat import WheelAssemblyGyrostat
 from utility import EigenMatrixCodeOutput
@@ -161,13 +163,13 @@ F_Rx, F_Ry, F_Rz, F_Fx, F_Fy, F_Fz = symbols('F_Rx F_Ry F_Rz F_Fx F_Fy F_Fz')
 # Tire contact forces
 G_Rx, G_Ry, G_Rz, G_Fx, G_Fy, G_Fz = symbols('G_Rx G_Ry G_Rz G_Fx G_Fy G_Fz')
 # Control/disturbance input vector, 15 x 1
-r = Matrix([T_rw, T_s, T_fw,                     # Internal joint torques
-            G_Rx, G_Ry, G_Rz,                    # Rear tire contact forces
-            F_Rx, F_Ry, F_Rz,                    # Rear frame external forces
-            T_Rx, T_Ry, T_Rz,                    # Rear frame external torques
-            G_Fx, G_Fy, G_Fz,                    # Front tire contact forces
-            F_Fx, F_Fy, F_Fz,                    # Front frame external forces
-            T_Fx, T_Fy, T_Fz])                   # Front frame external torques
+r = np.array([T_rw, T_s, T_fw,                     # Internal joint torques
+              G_Rx, G_Ry, G_Rz,                    # Rear tire contact forces
+              F_Rx, F_Ry, F_Rz,                    # Rear frame external forces
+              T_Rx, T_Ry, T_Rz,                    # Rear frame external torques
+              G_Fx, G_Fy, G_Fz,                    # Front tire contact forces
+              F_Fx, F_Fy, F_Fz,                    # Front frame external forces
+              T_Fx, T_Fy, T_Fz])                   # Front frame external torques
 
 
 # ### Reference frames
@@ -221,8 +223,11 @@ mc_f = wc_f.locatenew('mc_f',                      # Mass center, front
 sa_f = wc_f.locatenew('sa_f', front.c*F.x)         # Steer axis, front
 
 print("Forming configuration constraint...")
-f_c = dot(Y.z, sa_r.pos_from(gc_r) + ls*R.z + gc_f.pos_from(sa_f))
-code.generate(Matrix([f_c]), "Bicycle::f_c")
+f_c = np.array([dot(Y.z, sa_r.pos_from(gc_r) + ls*R.z + gc_f.pos_from(sa_f))])
+f_c_dq = np.array([f_c[0].diff(qi) for qi in q])
+code.generate(f_c, "Bicycle::f_c")
+code.generate(f_c_dq, "Bicycle::f_c_dq")
+
 
 print("Forming velocities of rear assembly points...")
 gc_r.set_vel(N, u[6]*wyf_x_r + u[7]*wyf_y_r + u[8]*Y.z)
@@ -238,27 +243,27 @@ sa_f.v2pt_theory(wc_f, N, F)
 
 print("Forming velocity constraint and coefficient matrices...")
 f_v_vec = sa_r.vel(N) - sa_f.vel(N)
-f_v = zeros(3,1)
-B = zeros(3, len(u))
-B_dq = [zeros(3, len(u)) for i in range(3)]        # List of partials w.r.t. 3 coordinates
-B_hess = [[zeros(3,3) for j in range(len(u))] for i in range(3)]  # Hessian w.r.t 3 coords of each entry
+f_v = np.zeros((3,), dtype=object)
+B = np.zeros((3, 12), dtype=object)
+B_dq = np.zeros((3, 12, 3), dtype=object)
+B_hess = np.zeros((3, 12, 3, 3), dtype=object)
 
 for i, uv in enumerate(F):
-    f_v[i, 0] = f_v_vec & uv
+    f_v[i] = f_v_vec & uv
     for j, uj in enumerate(u):
-        B[i, j] = f_v[i, 0].diff(uj)
+        B[i, j] = f_v[i].diff(uj)
         for k, qk in enumerate(q[1:3]):
-            B_dq[k][i, j] = B[i, j].diff(qk)
+            B_dq[i, j, k] = B[i, j].diff(qk)
             for l, ql in enumerate(q[1:3]):
-                B_hess[i][j][k, l] = B_dq[k][i, j].diff(ql)
+                B_hess[i, j, k, l] = B_dq[i, j, k].diff(ql)
 
-print("Generating constrint coefficient matrix code...")
+
+print("Generating constraint coefficient matrix code...")
 code.generate(B, "Bicycle::f_v_coefficient")
-#print("Generating constrint coefficient Jacobian matrix code...")
-#code.generate(B_dq, "Bicycle::f_v_coefficient_dq")
-#print("Generating constrint coefficient Hessian matrix code...")
-#code.generate(B_hess, "Bicycle::f_v_coefficient_hessian")
-#stop
+print("Generating constraint coefficient Jacobian matrix code...")
+code.generate(B_dq, "Bicycle::f_v_coefficient_dq")
+print("Generating constraint coefficient Hessian matrix code...")
+code.generate(B_hess, "Bicycle::f_v_coefficient_hessian")
 
 print("Forming rear assembly partial angular velocities...")
 R_N_pav, RW_N_pav, RW_R_pav = partial_velocity([R.ang_vel_in(N),
@@ -301,8 +306,8 @@ I_r = inertia(R, rear.Ixx, rear.Iyy, rear.Izz, 0, 0, rear.Ixz)
 I_f = inertia(F, front.Ixx, front.Iyy, front.Izz, 0, 0, front.Ixz)
 
 print("Computing generalized active forces and generalized inertia forces...")
-gaf = zeros(len(u), 1)
-gif = zeros(len(u), 1)
+gaf = np.zeros((len(u),), dtype=object)
+gif = np.zeros((len(u),), dtype=object)
 a_r = mc_r.acc(N)
 a_f = mc_f.acc(N)
 w_r_n = R.ang_vel_in(N)
@@ -313,57 +318,57 @@ alpha_r_n = R.ang_acc_in(N)
 alpha_f_n = F.ang_acc_in(N)
 alpha_rw_r = RW.ang_acc_in(R)
 alpha_fw_f = FW.ang_acc_in(F)
-f_r = zeros(len(u), len(r))
-M = zeros(len(u), len(u))
-f_star_qu = zeros(len(u), 1)
-f_star_qu_dq = zeros(len(u), len(q))
-f_star_qu_du = zeros(len(u), len(u))
+f_r = np.zeros((len(u), len(r)), dtype=object)
+M = np.zeros((len(u), len(u)), dtype=object)
+f_star_qu = np.zeros((len(u),), dtype=object)
+f_star_qu_dq = np.zeros((len(u), len(q)), dtype=object)
+f_star_qu_du = np.zeros((len(u), len(u)), dtype=object)
 for i in range(len(u)):
     # Generalized active forces
-    gaf[i, 0] = ((F_gc_r & gc_r_pv[i])
-               + (F_gc_f & gc_f_pv[i])
-               + (F_mc_r & mc_r_pv[i])
-               + (F_mc_f & mc_f_pv[i])
-               + (T_R & R_N_pav[i])
-               + (T_F & F_N_pav[i])
-               + (T_RW & RW_N_pav[i])
-               + (T_FW & FW_F_pav[i]))
+    gaf[i] = ((F_gc_r & gc_r_pv[i])
+            + (F_gc_f & gc_f_pv[i])
+            + (F_mc_r & mc_r_pv[i])
+            + (F_mc_f & mc_f_pv[i])
+            + (T_R & R_N_pav[i])
+            + (T_F & F_N_pav[i])
+            + (T_RW & RW_N_pav[i])
+            + (T_FW & FW_F_pav[i]))
 
     # Input coefficient matrix
     for j, rj in enumerate(r):
-        f_r[i, j] = gaf[i, 0].diff(rj)
+        f_r[i, j] = gaf[i].diff(rj)
 
     # Generalized inertia forces
-    gif[i, 0] = - (rear.m*(a_r & mc_r_pv[i])
-                 + front.m*(a_f & mc_f_pv[i])
-                 + (((I_r & alpha_r_n) + (w_r_n ^ (I_r & w_r_n)) +
-                     rear.J*(alpha_rw_r + (w_r_n ^ w_rw_r))) & R_N_pav[i])
-                 + (((I_f & alpha_f_n) + (w_f_n ^ (I_f & w_f_n)) +
-                     front.J*(alpha_fw_f + (w_f_n ^ w_fw_f))) & F_N_pav[i])
-                 + rear.J*((alpha_r_n + alpha_rw_r) & RW_R_pav[i])
-                 + front.J*((alpha_f_n + alpha_fw_f) & FW_F_pav[i]))
+    gif[i] = - (rear.m*(a_r & mc_r_pv[i])
+              + front.m*(a_f & mc_f_pv[i])
+              + (((I_r & alpha_r_n) + (w_r_n ^ (I_r & w_r_n)) +
+                  rear.J*(alpha_rw_r + (w_r_n ^ w_rw_r))) & R_N_pav[i])
+              + (((I_f & alpha_f_n) + (w_f_n ^ (I_f & w_f_n)) +
+                  front.J*(alpha_fw_f + (w_f_n ^ w_fw_f))) & F_N_pav[i])
+              + rear.J*((alpha_r_n + alpha_rw_r) & RW_R_pav[i])
+              + front.J*((alpha_f_n + alpha_fw_f) & FW_F_pav[i]))
 
     # Coriolis and centripel terms of generalized inertia forces
-    f_star_qu[i, 0] = gif[i, 0].subs(ud_zero_dict)
+    f_star_qu[i] = gif[i].subs(ud_zero_dict)
 
     # Mass matrix and partial derivatives w.r.t u
     for j, (uj, udj) in enumerate(zip(u, ud)):
-        f_star_qu_du[i, j] = f_star_qu[i, 0].diff(uj)
-        M[i, j] = gif[i, 0].diff(udj)
+        f_star_qu_du[i, j] = f_star_qu[i].diff(uj)
+        M[i, j] = gif[i].diff(udj)
 
     # Coriolis/centripetal partial derivatives w.r.t q
     for j, qj in enumerate(q):
-        f_star_qu_dq[i, j] = f_star_qu[i, 0].diff(qj)
+        f_star_qu_dq[i, j] = f_star_qu[i].diff(qj)
 
 print("Generating mass matrix code...")
 code.generate(M, "Bicycle::mass_matrix")
 print("Generating input coefficient matrix code...")
-code.generate(f_r, "Biycycle::input_coefficient_matrix")
+code.generate(f_r, "Bicycle::input_coefficient_matrix")
 print("Generating f_star_qu code...")
-code.generate(f_star_qu, "Biycycle::f_star_qu")
+code.generate(f_star_qu, "Bicycle::f_star_qu")
 print("Generating f_star_qu_dq code...")
-code.generate(f_star_qu_dq, "Biycycle::f_star_qu_dq")
+code.generate(f_star_qu_dq, "Bicycle::f_star_qu_dq")
 print("Generating f_star_qu_du code...")
-code.generate(f_star_qu_du, "Biycycle::f_star_qu_du")
+code.generate(f_star_qu_du, "Bicycle::f_star_qu_du")
 
 code.output("bicycle_generated.cc")

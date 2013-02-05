@@ -1,5 +1,6 @@
-from sympy import ccode, cse, numbered_symbols, symbols
+from sympy import ccode, cse, numbered_symbols, symbols, sympify
 import re
+import numpy as np
 
 class EigenMatrixCodeOutput(object):
     """A class to generate Eigen matrices from SymPy matrices.
@@ -11,49 +12,57 @@ class EigenMatrixCodeOutput(object):
         self.regex_list = []
         self.state_prefix = ''
 
-    def generate(self, matrix, functionname):
-        """Given a SymPy matrix, return a string of C++ code that will compile.
-
-        If filename is given, the string will be written to the filename.
+    def generate(self, expressions, functionname):
+        """Given a numpy nd-array of sympy expressions, return a function which
+        will generate a C-style function that will compute the entries of the
+        array.  The array is flattened out into a contiguous array with the
+        last index varying fastest (row-major for matrices).
         """
 
-        m, n = matrix.shape
+        orig_shape = expressions.shape
+        s =  "/*!\n"
+        s += "   Computes the n-d array of shape ("
+        for d in expressions.shape[:-1]:
+            s += "{0}, ".format(d)
+        s += "{0})\n\n".format(expressions.shape[-1])
+        s += "   @param[out] a C-array of with {0} elements\n".format(expressions.size)
+        s += "*/\n"
 
-        s = "Matrix<double, {0}, {1}> m {2}()".format(m, n, functionname)
+        expressions = np.array([sympify(ai).subs(self.subs_dict) for ai in expressions.flat])
+
+        s += "void {0}(double m[{1}])".format(functionname, expressions.size)
         s += " {\n"
-        repl, redu = cse(matrix.subs(self.subs_dict),
-                         symbols=numbered_symbols("z"))
+        repl, redu = cse(expressions.flat, symbols=numbered_symbols("z"))
 
-        s += "  Matrix<double, {0}, {1}> m;\n".format(m, n)
         if len(repl):
-            s += "  Matrix<double, {0}, 1> z;\n".format(len(repl))
+            s += "  double * z = new double[{0}];\n\n".format(len(repl))
+
         for i, r in enumerate(repl):
-            s += "  " + re.sub(r'z(\d+)', r'z(\1)', str(r[0])) + " = "
-            tmp = re.sub(r'z(\d+)', r'z(\1)', ccode(r[1])) + ";\n"
+            s += "  " + re.sub(r'z(\d+)', r'z[\1]', str(r[0])) + " = "
+            tmp = re.sub(r'z(\d+)', r'z[\1]', ccode(r[1])) + ";\n"
             if self.state_prefix:
                 tmp = re.sub(self.state_prefix + r'(\d+)',
-                             self.state_prefix + r'(\1)', tmp)
+                             self.state_prefix + r'[\1]', tmp)
             for p, r in self.regex_list:
                 test = re.compile(p)
                 tmp = test.sub(r, tmp)
             s += tmp
 
         s += "\n"
-        for i in range(m):
-            for j in range(n):
-                s += "  m({0}, {1}) = ".format(i, j)
-                tmp = re.sub(r'z(\d+)', r'z(\1)', ccode(redu[0][n*i + j]))
-                if self.state_prefix:
-                    tmp = re.sub(self.state_prefix + r'(\d+)',
-                                 self.state_prefix + r'(\1)', tmp)
-                for p, r in self.regex_list:
-                    test = re.compile(p)
-                    tmp = test.sub(r, tmp)
+        for i, red_i in enumerate(redu):
+            s += "  m[{0}] = ".format(i)
+            tmp = re.sub(r'z(\d+)', r'z[\1]', ccode(redu[i]))
+            if self.state_prefix:
+                tmp = re.sub(self.state_prefix + r'(\d+)',
+                             self.state_prefix + r'[\1]', tmp)
+            for p, r in self.regex_list:
+                test = re.compile(p)
+                tmp = test.sub(r, tmp)
 
-                s += tmp
-                s += ";\n"
+            s += tmp
+            s += ";\n"
 
-        s += "\n  return m;\n}\n\n"
+        s += "\n  delete [] z;\n}\n\n"
 
         self.s += s
 
@@ -73,9 +82,6 @@ using namespace Eigen;
 
 """
         return s
-
-    def add_subsitution_dict(self, d):
-        self.subs_dict.update(d)
 
     def set_states(self, variables, prefix):
         self.state_variables = variables
