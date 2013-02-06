@@ -2,12 +2,12 @@ from sympy import ccode, cse, numbered_symbols, symbols, sympify
 import re
 import numpy as np
 
-class EigenMatrixCodeOutput(object):
-    """A class to generate Eigen matrices from SymPy matrices.
+class NumpyArrayOutput(object):
+    """A class to generate flat C-arrays from numpy n-d arrays
     """
 
-    def __init__(self):
-        self.s = self._prefix()
+    def __init__(self, includes=None, namespaces=None):
+        self.s = self._prefix(includes, namespaces)
         self.subs_dict = {}
         self.regex_list = []
         self.state_prefix = ''
@@ -74,13 +74,16 @@ class EigenMatrixCodeOutput(object):
         f.close()
 
 
-    def _prefix(self):
-        s = """#include <cmath>
-#include <Eigen/Dense>
-using namespace std;
-using namespace Eigen;
-
-"""
+    def _prefix(self, includes, namespaces):
+        s = ""
+        if includes is not None:
+            for i in includes:
+                s += "#include " + i + "\n"
+            s += "\n"
+        if namespaces is not None:
+            for n in namespaces:
+                s += "using namespace " + n + ";\n"
+            s += "\n"
         return s
 
     def set_states(self, variables, prefix):

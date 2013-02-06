@@ -20,10 +20,10 @@ from sympy.core.numbers import Zero
 import numpy as np
 Vector.simp = False
 from wheelassemblygyrostat import WheelAssemblyGyrostat
-from utility import EigenMatrixCodeOutput
+from utility import NumpyArrayOutput
 
 # Output code generator
-code = EigenMatrixCodeOutput()
+code = NumpyArrayOutput(['<cmath>', '"bicycle.h"'], namespaces=['std'])
 
 # ## Model description
 # ### Parameters
@@ -58,11 +58,10 @@ code = EigenMatrixCodeOutput()
 
 rear = WheelAssemblyGyrostat('rear')
 front = WheelAssemblyGyrostat('front')
-code.add_regex(r'([_0-9a-zA-Z]+)_(rear|front)', r'\2.\1')
-#code.add_regex(r'(.+)_front', r'front.\1')
+code.add_regex(r'([_0-9a-zA-Z]+)_(rear|front)', r'\2_.\1')
 
 # Gravitational constant, time
-ls, g, t = symbols('ls g t')
+ls, g, t = symbols('ls_ g_ t')
 
 # ### Generalized coordinates
 #
@@ -169,7 +168,8 @@ r = np.array([T_rw, T_s, T_fw,                     # Internal joint torques
               T_Rx, T_Ry, T_Rz,                    # Rear frame external torques
               G_Fx, G_Fy, G_Fz,                    # Front tire contact forces
               F_Fx, F_Fy, F_Fz,                    # Front frame external forces
-              T_Fx, T_Fy, T_Fz])                   # Front frame external torques
+              T_Fx, T_Fy, T_Fz,                    # Front frame external torques
+              g])                                  # Gravitational field
 
 
 # ### Reference frames
@@ -257,13 +257,12 @@ for i, uv in enumerate(F):
             for l, ql in enumerate(q[1:3]):
                 B_hess[i, j, k, l] = B_dq[i, j, k].diff(ql)
 
-
 print("Generating constraint coefficient matrix code...")
 code.generate(B, "Bicycle::f_v_coefficient")
 print("Generating constraint coefficient Jacobian matrix code...")
 code.generate(B_dq, "Bicycle::f_v_coefficient_dq")
 print("Generating constraint coefficient Hessian matrix code...")
-code.generate(B_hess, "Bicycle::f_v_coefficient_hessian")
+code.generate(B_hess, "Bicycle::f_v_coefficient_dqdq")
 
 print("Forming rear assembly partial angular velocities...")
 R_N_pav, RW_N_pav, RW_R_pav = partial_velocity([R.ang_vel_in(N),
@@ -306,8 +305,6 @@ I_r = inertia(R, rear.Ixx, rear.Iyy, rear.Izz, 0, 0, rear.Ixz)
 I_f = inertia(F, front.Ixx, front.Iyy, front.Izz, 0, 0, front.Ixz)
 
 print("Computing generalized active forces and generalized inertia forces...")
-gaf = np.zeros((len(u),), dtype=object)
-gif = np.zeros((len(u),), dtype=object)
 a_r = mc_r.acc(N)
 a_f = mc_f.acc(N)
 w_r_n = R.ang_vel_in(N)
@@ -318,11 +315,14 @@ alpha_r_n = R.ang_acc_in(N)
 alpha_f_n = F.ang_acc_in(N)
 alpha_rw_r = RW.ang_acc_in(R)
 alpha_fw_f = FW.ang_acc_in(F)
-f_r = np.zeros((len(u), len(r)), dtype=object)
-M = np.zeros((len(u), len(u)), dtype=object)
-f_star_qu = np.zeros((len(u),), dtype=object)
-f_star_qu_dq = np.zeros((len(u), len(q)), dtype=object)
-f_star_qu_du = np.zeros((len(u), len(u)), dtype=object)
+gaf = np.zeros((len(u),), dtype=object)
+gaf_dqdr = np.zeros((len(u), len(q) + len(r)), dtype=object)
+gaf_dr = np.zeros((len(u), len(r)), dtype=object)
+gif = np.zeros((len(u),), dtype=object)
+gif_ud_zero = np.zeros((len(u),), dtype=object)
+gif_dud = np.zeros((len(u), len(u)), dtype=object)
+gif_ud_zero_dqdu = np.zeros((len(u), len(q) + len(u)), dtype=object)
+
 for i in range(len(u)):
     # Generalized active forces
     gaf[i] = ((F_gc_r & gc_r_pv[i])
@@ -333,10 +333,6 @@ for i in range(len(u)):
             + (T_F & F_N_pav[i])
             + (T_RW & RW_N_pav[i])
             + (T_FW & FW_F_pav[i]))
-
-    # Input coefficient matrix
-    for j, rj in enumerate(r):
-        f_r[i, j] = gaf[i].diff(rj)
 
     # Generalized inertia forces
     gif[i] = - (rear.m*(a_r & mc_r_pv[i])
@@ -349,26 +345,34 @@ for i in range(len(u)):
               + front.J*((alpha_f_n + alpha_fw_f) & FW_F_pav[i]))
 
     # Coriolis and centripel terms of generalized inertia forces
-    f_star_qu[i] = gif[i].subs(ud_zero_dict)
+    gif_ud_zero[i] = gif[i].subs(ud_zero_dict)
+
+    # Partial derivatives w.r.t q
+    for j, qj in enumerate(q):
+        gaf_dqdr[i, j] = gaf[i].diff(qj)
+        gif_ud_zero_dqdu[i, j] = gif_ud_zero[i].diff(qj)
+
+    # Input coefficient matrix
+    for j, rj in enumerate(r):
+        gaf_dqdr[i, j + len(q)] = gaf[i].diff(rj)
+
 
     # Mass matrix and partial derivatives w.r.t u
     for j, (uj, udj) in enumerate(zip(u, ud)):
-        f_star_qu_du[i, j] = f_star_qu[i].diff(uj)
-        M[i, j] = gif[i].diff(udj)
+        gif_ud_zero_dqdu[i, j + len(q)] = gif_ud_zero[i].diff(uj)
+        gif_dud[i, j] = gif[i].diff(udj)
 
-    # Coriolis/centripetal partial derivatives w.r.t q
-    for j, qj in enumerate(q):
-        f_star_qu_dq[i, j] = f_star_qu[i].diff(qj)
 
-print("Generating mass matrix code...")
-code.generate(M, "Bicycle::mass_matrix")
-print("Generating input coefficient matrix code...")
-code.generate(f_r, "Bicycle::input_coefficient_matrix")
-print("Generating f_star_qu code...")
-code.generate(f_star_qu, "Bicycle::f_star_qu")
-print("Generating f_star_qu_dq code...")
-code.generate(f_star_qu_dq, "Bicycle::f_star_qu_dq")
-print("Generating f_star_qu_du code...")
-code.generate(f_star_qu_du, "Bicycle::f_star_qu_du")
+print("Generating mass matrix (gif_dud) code...")
+code.generate(gif_dud, "Bicycle::gif_dud")
+print("Generating coriolis/centripetal (gif_ud_zero) code...")
+code.generate(gif_ud_zero, "Bicycle::gif_ud_zero")
+print("Generating partial derivatives of coriolis/centripetal (gif_ud_zero_dqdu) code...")
+code.generate(gif_ud_zero_dqdu, "Bicycle::gif_ud_zero_dqdu")
+
+print("Generating generalized active forces (gaf) code...")
+code.generate(gaf, "Bicycle::gaf")
+print("Generating generalized active forces partial derivative matrix (gaf_dqdr) code...")
+code.generate(gaf_dqdr, "Bicycle::gaf_dqdr")
 
 code.output("bicycle_generated.cc")
