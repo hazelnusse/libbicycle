@@ -29,11 +29,7 @@ class Bicycle {
   static const int kNumberOfVelocityConstraints = 3;
   WheelAssemblyGyrostat rear_, front_;
   double x_[20];
-  double ls_, g_;
-  double T_rw, T_s, T_fw, G_Rx, G_Ry, G_Rz, F_Rx, F_Ry, F_Rz,
-         T_Rx, T_Ry, T_Rz, G_Fx, G_Fy, G_Fz, F_Fx, F_Fy, F_Fz,
-         T_Fx, T_Fy, T_Fz;
-
+  double ls_, g_, T_s;
   int dependent_coordinate_index, dependent_speeds_indices[3];
 };
 #endif

@@ -22,3 +22,13 @@ class WheelAssemblyGyrostat(object):
         self.a = real('a', name)              # r^{mc/wc} * x
         self.b = real('b', name)              # r^{mc/wc} * z
         self.c = real('c', name)              # r^{sa/wc} * x
+        self.Tw = real('Tw', name)            # Wheel torque
+        self.Tx = real('Tx', name)            # T * x
+        self.Ty = real('Ty', name)            # T * y
+        self.Tz = real('Tz', name)            # T * z
+        self.Gx = real('Gx', name)            # G * x
+        self.Gy = real('Gy', name)            # G * y
+        self.Gz = real('Gz', name)            # G * z
+        self.Fx = real('Fx', name)            # F * x
+        self.Fy = real('Fy', name)            # F * y
+        self.Fz = real('Fz', name)            # F * z

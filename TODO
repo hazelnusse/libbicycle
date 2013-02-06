@@ -1,0 +1,3 @@
+* Create callbacks for user specified forces
+* Implement code to create linearized equation of motion matrices
+* Create boost.python wrappers to C++ Bicycle class
