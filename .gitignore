@@ -1,0 +1,5 @@
+build/
+__old__/
+derivation/__pycache__
+derivation/*.cc
+*.swp
