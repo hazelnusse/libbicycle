@@ -6,6 +6,7 @@ set(CMAKE_MODULE_PATH
     ${BICYCLE_SOURCE_DIR}/cmake/Modules/)
 
 set(BUILD_SHARED_LIBS true)
+set(BICYCLE_BUILD_TESTS true)
 
 # Set g++ compiler flags if GNU C++ compiler is being used
 if(CMAKE_COMPILER_IS_GNUCXX)
@@ -16,5 +17,11 @@ endif()
 
 find_package(Eigen3 3.1)
 
+if (BICYCLE_BUILD_TESTS)
+  enable_testing()
+  add_subdirectory(googletest)
+endif()
+
 include_directories(${BICYCLE_SOURCE_DIR}/inc)
+add_subdirectory(${BICYCLE_SOURCE_DIR}/inc)
 add_subdirectory(${BICYCLE_SOURCE_DIR}/src)
