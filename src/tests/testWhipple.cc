@@ -1,20 +1,14 @@
+#include <cmath>
 #include "whipple.h"
 #include "gtest/gtest.h"
-
-class SpecificSingleton : public Singleton<SpecificSingleton>
-{
-  friend class Singleton<SpecificSingleton>;
- public:
-  int Data() const { return Data_; }
- private:
-  SpecificSingleton() : Data_(42) {}
-  ~SpecificSingleton() {}
-  int Data_;
-};
 
 TEST(WhippleTest, DefaultConstructor)
 {
   Whipple a;
   EXPECT_EQ(a.w, 1.02);
+  EXPECT_EQ(a.c, 0.08);
+  EXPECT_EQ(a.lambda, M_PI/10.0);
+  EXPECT_EQ(a.g, 9.81);
+  EXPECT_EQ(a.rR, 0.3);
+  EXPECT_EQ(a.mR, 2.0);
 }
-
