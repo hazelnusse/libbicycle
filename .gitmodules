@@ -1,0 +1,3 @@
+[submodule "googletest-svn"]
+	path = googletest-svn
+	url = git://github.com/hazelnusse/googletest-svn.git
