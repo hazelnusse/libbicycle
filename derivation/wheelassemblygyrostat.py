@@ -3,11 +3,11 @@ from sympy import Symbol
 class WheelAssemblyGyrostat(object):
     """A class to hold physical parameters which describe a wheel assembly
     gyrostat."""
-    
+
     def __init__(self, name):
         def nonnegative(s, name):
             return Symbol(s + '_' + name, real=True, nonnegative=True)
-        
+
         def real(s, name):
             return Symbol(s + '_' + name, real=True)
 
@@ -32,3 +32,6 @@ class WheelAssemblyGyrostat(object):
         self.Fx = real('Fx', name)            # F * x
         self.Fy = real('Fy', name)            # F * y
         self.Fz = real('Fz', name)            # F * z
+
+    def __str__(self):
+        return self.name + "_"

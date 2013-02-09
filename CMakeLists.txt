@@ -7,6 +7,7 @@ set(CMAKE_MODULE_PATH
 
 set(BUILD_SHARED_LIBS true)
 set(BICYCLE_BUILD_TESTS true)
+set(BICYCLE_BUILD_EXAMPLES true)
 
 # Set g++ compiler flags if GNU C++ compiler is being used
 if(CMAKE_COMPILER_IS_GNUCXX)
@@ -25,3 +26,8 @@ endif()
 include_directories(${BICYCLE_SOURCE_DIR}/inc)
 add_subdirectory(${BICYCLE_SOURCE_DIR}/inc)
 add_subdirectory(${BICYCLE_SOURCE_DIR}/src)
+
+if (BICYCLE_BUILD_EXAMPLES)
+  add_subdirectory(examples)
+endif()
+

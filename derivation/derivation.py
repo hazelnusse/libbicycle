@@ -15,9 +15,8 @@ assumptions to be made and allows for constraint force determination, or a
 tire contact force model can be added.  In the former case, the model has 3
 degrees of freedom; in the latter case, it has 7 degrees of freedom.
 """
-from sympy import symbols, Matrix, zeros, sqrt, trigsimp
+from sympy import symbols
 from sympy.physics.mechanics import *
-from sympy.core.numbers import Zero
 import numpy as np
 Vector.simp = False
 from wheelassemblygyrostat import WheelAssemblyGyrostat
@@ -150,7 +149,7 @@ def derivation():
     # wheel plane and ground plane, and the third perpendicular to the other two.
 
     # Steer torque
-    T_s = symbols('T_s')
+    T_s = symbols('steer_torque_')
     # Control/disturbance input vector, 15 x 1
     r = np.array(
         [rear.Tw,                       # Rear wheel torque
@@ -196,7 +195,6 @@ def derivation():
     wyf_x_f = (F.y ^ Y.z).normalize()   # Wheel yaw frame, x, front
     wyf_y_f = Y.z ^ wyf_x_f             # Wheel yaw frame, y, front
 
-
     print("Defining positions of rear assembly points...")
     gc_r = Point('gc_r')                               # Ground contact, rear
     wc_r = gc_r.locatenew('wc_r',                      # Wheel center, rear
@@ -213,10 +211,18 @@ def derivation():
                           front.a*F.x + front.b*F.z)
     sa_f = wc_f.locatenew('sa_f', front.c*F.x)         # Steer axis, front
 
+    # Defining kinematic differential equations
+    kinematic_odes_rhs = np.zeros((8,), dtype=object)
+    for i, qdi in enumerate(qd[:6]):
+        kinematic_odes_rhs[i] = u[i]
+
+    v_gc_rw = gc_r.pos_from(wc_r).diff(t, L).subs(qd_u_dict) + (L.ang_vel_in(RW) ^ gc_r.pos_from(wc_r))
+    kinematic_odes_rhs[6] = v_gc_rw & N.x
+    kinematic_odes_rhs[7] = v_gc_rw & N.y
+
     print("Forming configuration constraint...")
     f_c = np.array([dot(Y.z, sa_r.pos_from(gc_r) + ls*R.z + gc_f.pos_from(sa_f))])
     f_c_dq = np.array([f_c[0].diff(qi) for qi in q])
-
 
     print("Forming velocities of rear assembly points...")
     gc_r.set_vel(N, u[6]*wyf_x_r + u[7]*wyf_y_r + u[8]*Y.z)
@@ -245,7 +251,6 @@ def derivation():
                 B_dq[i, j, k] = B[i, j].diff(qk)
                 for l, ql in enumerate(q[1:3]):
                     B_hess[i, j, k, l] = B_dq[i, j, k].diff(ql)
-
 
     print("Forming rear assembly partial angular velocities...")
     R_N_pav, RW_N_pav, RW_R_pav = partial_velocity([R.ang_vel_in(N),
@@ -300,6 +305,7 @@ def derivation():
     alpha_fw_f = FW.ang_acc_in(F)
     gaf = np.zeros((len(u),), dtype=object)
     gaf_dqdr = np.zeros((len(u), len(q) + len(r)), dtype=object)
+    gaf_dq = np.zeros((len(u), len(q)), dtype=object)
     gaf_dr = np.zeros((len(u), len(r)), dtype=object)
     gif = np.zeros((len(u),), dtype=object)
     gif_ud_zero = np.zeros((len(u),), dtype=object)
@@ -332,12 +338,12 @@ def derivation():
 
         # Partial derivatives w.r.t q
         for j, qj in enumerate(q):
-            gaf_dqdr[i, j] = gaf[i].diff(qj)
+            gaf_dq[i, j] = gaf_dqdr[i, j] = gaf[i].diff(qj)
             gif_ud_zero_dqdu[i, j] = gif_ud_zero[i].diff(qj)
 
         # Input coefficient matrix
         for j, rj in enumerate(r):
-            gaf_dqdr[i, j + len(q)] = gaf[i].diff(rj)
+            gaf_dr[i, j] = gaf_dqdr[i, j + len(q)] = gaf[i].diff(rj)
 
 
         # Mass matrix and partial derivatives w.r.t u
@@ -349,16 +355,27 @@ def derivation():
     # Output code generation
     code = NumpyArrayOutput(['<cmath>', '"bicycle.h"'], namespaces=['std'])
     code.add_regex(r'([_0-9a-zA-Z]+)_(rear|front)', r'\2_.\1')
-    code.set_states(q+u, 'x_')
+    code.set_states(q+u, 'state_')
 
+    print("Generating configuration constraint (f_c) code...")
     code.generate(f_c, "Bicycle::f_c")
+    print("Generating configuration constraint partial derivatives code" +
+          "(f_c_dq) code...")
     code.generate(f_c_dq, "Bicycle::f_c_dq")
-    print("Generating constraint coefficient matrix code...")
+
+    print("Generating constraint coefficient matrix (f_v_coefficient) code...")
     code.generate(B, "Bicycle::f_v_coefficient")
-    print("Generating constraint coefficient Jacobian matrix code...")
+    print("Generating constraint coefficient Jacobian matrix " +
+          "(f_v_coefficient_dq) code...")
     code.generate(B_dq, "Bicycle::f_v_coefficient_dq")
-    print("Generating constraint coefficient Hessian matrix code...")
+    print("Generating constraint coefficient Hessian matrix " +
+          "(f_v_coefficient_dqdq) code...")
     code.generate(B_hess, "Bicycle::f_v_coefficient_dqdq")
+
+    print("Generating kinematic differential equations right hand sides " +
+          "(kinematic_odes_rhs) code...")
+    code.generate(kinematic_odes_rhs, "Bicycle::kinematic_odes_rhs")
+
     print("Generating mass matrix (gif_dud) code...")
     code.generate(gif_dud, "Bicycle::gif_dud")
     print("Generating coriolis/centripetal (gif_ud_zero) code...")
@@ -371,6 +388,13 @@ def derivation():
     print("Generating generalized active forces partial derivative matrix " +
           "(gaf_dqdr) code...")
     code.generate(gaf_dqdr, "Bicycle::gaf_dqdr")
+    print("Generating generalized active forces coordinate partial " +
+          "derivative matrix (gaf_dq) code...")
+    code.generate(gaf_dq, "Bicycle::gaf_dq")
+    print("Generating generalized active forces input coefficient matrix " +
+          "(gaf_dr) code...")
+    code.generate(gaf_dr, "Bicycle::gaf_dr")
+
     code.output("bicycle_generated.cc")
 
 if __name__ == "__main__":

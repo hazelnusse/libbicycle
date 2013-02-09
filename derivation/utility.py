@@ -1,22 +1,28 @@
-from sympy import ccode, cse, numbered_symbols, symbols, sympify
+from sympy import ccode, cse, numbered_symbols, symbols, S
 import re
 import numpy as np
 
 class NumpyArrayOutput(object):
-    """A class to generate flat C-arrays from numpy n-d arrays
-    """
-
     def __init__(self, includes=None, namespaces=None):
+        """A class to generate flat C-arrays from numpy nd arrays.
+
+        If you want certain files to be included or namespaces to be used, pass
+        these in as a list of strings.  Include files need to be specified with
+        " " or < > characters to indicate whether they are system includes or
+        local includes.
+
+        """
         self.s = self._prefix(includes, namespaces)
         self.subs_dict = {}
         self.regex_list = []
         self.state_prefix = ''
 
-    def generate(self, expressions, functionname):
+    def generate(self, expressions, functionname, const_function=True, callbacks=None):
         """Given a numpy nd-array of sympy expressions, return a function which
         will generate a C-style function that will compute the entries of the
         array.  The array is flattened out into a contiguous array with the
         last index varying fastest (row-major for matrices).
+
         """
 
         orig_shape = expressions.shape
@@ -25,17 +31,32 @@ class NumpyArrayOutput(object):
         for d in expressions.shape[:-1]:
             s += "{0}, ".format(d)
         s += "{0})\n\n".format(expressions.shape[-1])
-        s += "   @param[out] a C-array of with {0} elements\n".format(expressions.size)
-        s += "*/\n"
+        s += "   @param[out] a C-array of with {0}".format(expressions.size)
+        s += " elements\n*/\n"
 
-        expressions = np.array([sympify(ai).subs(self.subs_dict) for ai in expressions.flat])
+        expressions_flat = np.zeros((expressions.size,), dtype=object)
+        for i, ai in enumerate(expressions.flat):
+            if ai == 0:
+                expressions_flat[i] = S(0)
+            else:
+                expressions_flat[i] = ai.subs(self.subs_dict)
 
-        s += "void {0}(double m[{1}])".format(functionname, expressions.size)
-        s += " {\n"
-        repl, redu = cse(expressions.flat, symbols=numbered_symbols("z"))
+        function_signature = "void {0}(double m[{1}])".format(functionname,
+                                                        expressions_flat.size)
+        if const_function:
+            function_signature += " const"
+        s += "//  " + function_signature + ";"
+        s += function_signature + " {\n"
+
+        repl, redu = cse(expressions_flat, symbols=numbered_symbols("z"))
 
         if len(repl):
             s += "  double * z = new double[{0}];\n\n".format(len(repl))
+
+        if callbacks is not None:
+            for c in callbacks:
+                cname, symbolname = c
+                s += "  " + cname + "(" + symbolname + ");\n"
 
         for i, r in enumerate(repl):
             s += "  " + re.sub(r'z(\d+)', r'z[\1]', str(r[0])) + " = "
@@ -69,10 +90,13 @@ class NumpyArrayOutput(object):
         return s
 
     def output(self, filename):
+        """Write all generated code to file.  No checking is done on whether
+        the file exists, so this will overwrite existing files.
+
+        """
         f = open(filename, "w")
         f.write(self.s)
         f.close()
-
 
     def _prefix(self, includes, namespaces):
         s = ""
@@ -87,6 +111,13 @@ class NumpyArrayOutput(object):
         return s
 
     def set_states(self, variables, prefix):
+        """Define state variables.
+
+        The generated code is output so that all symbols in the variables
+        argument are rewritten to be indexed into a state array with the name
+        specified by prefix.
+
+        """
         self.state_variables = variables
         self.state_prefix = prefix
         self.state_symbols = symbols(prefix + ":" + str(len(variables)))
@@ -94,5 +125,11 @@ class NumpyArrayOutput(object):
         self.subs_dict.update(self.state_dict)
 
     def add_regex(self, pattern, replacement):
+        """Add a pattern and replacement that will be applied to ccode output
+        strings.
+
+        This is useful if you want to use different variable names in your
+        C/C++ code than what you use in your Python code.
+        """
         self.regex_list.append([pattern, replacement])
 
