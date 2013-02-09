@@ -34,6 +34,13 @@ class Bicycle {
 
  private:
   // Generated code, don't expose as this is an implementation detail
+  void gc_r_ogl(double m[16]) const;
+  void wc_r_ogl(double m[16]) const;
+  void mc_r_ogl(double m[16]) const;
+  void gc_f_ogl(double m[16]) const;
+  void wc_f_ogl(double m[16]) const;
+  void mc_f_ogl(double m[16]) const;
+  void N_ogl(double m[16]) const;
   void f_c(double m[1]) const;
   void f_c_dq(double m[8]) const;
   void f_v_coefficient(double m[36]) const;
@@ -54,6 +61,7 @@ class Bicycle {
   state state_;
   WheelAssemblyGyrostat rear_, front_;
   double ls_, g_, steer_torque_;
+  double azimuth, elevation, twist, cam_x, cam_y, cam_z;
   int dependent_coordinate_, dependent_speeds_[3];
 };
 #endif

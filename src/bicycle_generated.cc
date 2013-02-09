@@ -4,10 +4,447 @@
 using namespace std;
 
 /*!
+   Computes the n-d array of shape (16)
+
+   @param[out] a C-array of with 16 elements
+*/
+//  void Bicycle::gc_r_ogl(double m[16]) const;
+void Bicycle::gc_r_ogl(double m[16]) const {
+  double * z = new double[15];
+
+  z[0] = sin(azimuth);
+  z[1] = sin(elevation);
+  z[2] = sin(twist);
+  z[3] = cos(azimuth);
+  z[4] = cos(elevation);
+  z[5] = cos(state_[1]);
+  z[6] = cos(twist);
+  z[7] = cam_x + cam_z;
+  z[8] = z[0]*z[2] + z[1]*z[3]*z[6];
+  z[9] = z[0]*z[1]*z[2] + z[3]*z[6];
+  z[10] = z[0]*z[6] - z[1]*z[2]*z[3];
+  z[11] = z[0]*z[1]*z[6] - z[2]*z[3];
+  z[12] = -z[3];
+  z[13] = z[5]/sqrt(pow(z[5], 2));
+  z[14] = z[13]*z[4];
+
+  m[0] = z[10]*z[13];
+  m[1] = z[13]*z[8];
+  m[2] = z[12]*z[14];
+  m[3] = 0;
+  m[4] = z[13]*z[9];
+  m[5] = -z[11]*z[13];
+  m[6] = z[0]*z[14];
+  m[7] = 0;
+  m[8] = z[2]*z[4];
+  m[9] = -z[4]*z[6];
+  m[10] = -z[1];
+  m[11] = 0;
+  m[12] = -cam_y*z[9] - z[10]*z[7];
+  m[13] = cam_y*z[11] - z[7]*z[8];
+  m[14] = -z[4]*(cam_y*z[0] + z[12]*z[7]);
+  m[15] = 0;
+
+  delete [] z;
+}
+
+/*!
+   Computes the n-d array of shape (16)
+
+   @param[out] a C-array of with 16 elements
+*/
+//  void Bicycle::wc_r_ogl(double m[16]) const;
+void Bicycle::wc_r_ogl(double m[16]) const {
+  double * z = new double[33];
+
+  z[0] = sin(azimuth);
+  z[1] = sin(elevation);
+  z[2] = sin(state_[1]);
+  z[3] = sin(state_[2]);
+  z[4] = sin(twist);
+  z[5] = cos(azimuth);
+  z[6] = cos(elevation);
+  z[7] = cos(state_[1]);
+  z[8] = cos(state_[2]);
+  z[9] = cos(state_[4]);
+  z[10] = cos(twist);
+  z[11] = cam_x + cam_z;
+  z[12] = sqrt(pow(z[7], 2));
+  z[13] = rear_.R/z[12] + rear_.r;
+  z[14] = z[0]*z[4] + z[1]*z[10]*z[5];
+  z[15] = z[0]*z[1]*z[4] + z[10]*z[5];
+  z[16] = z[0]*z[2]*z[6] + z[1]*z[7];
+  z[17] = z[0]*z[10] - z[1]*z[4]*z[5];
+  z[18] = z[0]*z[1]*z[10] - z[4]*z[5];
+  z[19] = z[0]*z[6]*z[7] - z[1]*z[2];
+  z[20] = z[15]*z[7] + z[2]*z[4]*z[6];
+  z[21] = z[16]*z[8] + z[3]*z[5]*z[6];
+  z[22] = z[15]*z[2] - z[4]*z[6]*z[7];
+  z[23] = -z[16]*z[3] + z[5]*z[6]*z[8];
+  z[24] = -z[10]*z[2]*z[6] - z[18]*z[7];
+  z[25] = z[14]*z[8] + z[3]*(z[10]*z[6]*z[7] - z[18]*z[2]);
+  z[26] = z[14]*z[3] - z[8]*(z[10]*z[6]*z[7] - z[18]*z[2]);
+  z[27] = -z[3];
+  z[28] = -sin(state_[4]);
+  z[29] = rear_.R/z[12];
+  z[30] = z[13]*z[6];
+  z[31] = z[17]*z[8];
+  z[32] = z[22]*z[8];
+
+  m[0] = z[28]*(-z[17]*z[27] - z[32]) - z[9]*(z[22]*z[27] - z[31]);
+  m[1] = z[25]*z[9] + z[26]*z[28];
+  m[2] = -z[21]*z[28] - z[23]*z[9];
+  m[3] = 0;
+  m[4] = z[20];
+  m[5] = z[24];
+  m[6] = z[19];
+  m[7] = 0;
+  m[8] = z[28]*(z[22]*z[27] - z[31]) + z[9]*(-z[17]*z[27] - z[32]);
+  m[9] = -z[25]*z[28] + z[26]*z[9];
+  m[10] = -z[21]*z[9] + z[23]*z[28];
+  m[11] = 0;
+  m[12] = -cam_y*z[15] - z[11]*z[17] + z[2]*z[20]*z[29] - z[30]*z[4];
+  m[13] = cam_y*z[18] + z[10]*z[30] - z[11]*z[14] + z[2]*z[24]*z[29];
+  m[14] = -cam_y*z[0]*z[6] + z[1]*z[13] + z[11]*z[5]*z[6] + z[19]*z[2]*z[29];
+  m[15] = 0;
+
+  delete [] z;
+}
+
+/*!
+   Computes the n-d array of shape (16)
+
+   @param[out] a C-array of with 16 elements
+*/
+//  void Bicycle::mc_r_ogl(double m[16]) const;
+void Bicycle::mc_r_ogl(double m[16]) const {
+  double * z = new double[32];
+
+  z[0] = sin(azimuth);
+  z[1] = sin(elevation);
+  z[2] = sin(state_[1]);
+  z[3] = sin(state_[2]);
+  z[4] = sin(twist);
+  z[5] = cos(azimuth);
+  z[6] = cos(elevation);
+  z[7] = cos(state_[1]);
+  z[8] = cos(state_[2]);
+  z[9] = cos(twist);
+  z[10] = cam_x + cam_z;
+  z[11] = sqrt(pow(z[7], 2));
+  z[12] = rear_.R/z[11] + rear_.r;
+  z[13] = z[0]*z[1]*z[4] + z[5]*z[9];
+  z[14] = z[0]*z[2]*z[6] + z[1]*z[7];
+  z[15] = z[0]*z[9] - z[1]*z[4]*z[5];
+  z[16] = z[0]*z[1]*z[9] - z[4]*z[5];
+  z[17] = z[0]*z[6]*z[7] - z[1]*z[2];
+  z[18] = -z[0]*z[4] - z[1]*z[5]*z[9];
+  z[19] = z[13]*z[7] + z[2]*z[4]*z[6];
+  z[20] = z[14]*z[8] + z[3]*z[5]*z[6];
+  z[21] = z[13]*z[2] - z[4]*z[6]*z[7];
+  z[22] = z[14]*z[3] - z[5]*z[6]*z[8];
+  z[23] = -z[16]*z[7] - z[2]*z[6]*z[9];
+  z[24] = z[15]*z[8] + z[21]*z[3];
+  z[25] = -z[18]*z[8] + z[3]*(-z[16]*z[2] + z[6]*z[7]*z[9]);
+  z[26] = z[15]*z[3] - z[21]*z[8];
+  z[27] = -z[18]*z[3] - z[8]*(-z[16]*z[2] + z[6]*z[7]*z[9]);
+  z[28] = -rear_.a;
+  z[29] = -cam_y;
+  z[30] = rear_.R/z[11];
+  z[31] = z[12]*z[6];
+
+  m[0] = z[24];
+  m[1] = z[25];
+  m[2] = z[22];
+  m[3] = 0;
+  m[4] = z[19];
+  m[5] = z[23];
+  m[6] = z[17];
+  m[7] = 0;
+  m[8] = z[26];
+  m[9] = z[27];
+  m[10] = -z[20];
+  m[11] = 0;
+  m[12] = rear_.b*z[26] - z[10]*z[15] + z[13]*z[29] + z[19]*z[2]*z[30] - z[24]*z[28] - z[31]*z[4];
+  m[13] = rear_.b*z[27] + z[10]*z[18] - z[16]*z[29] + z[2]*z[23]*z[30] - z[25]*z[28] + z[31]*z[9];
+  m[14] = -rear_.b*z[20] + z[0]*z[29]*z[6] + z[1]*z[12] + z[10]*z[5]*z[6] + z[17]*z[2]*z[30] - z[22]*z[28];
+  m[15] = 0;
+
+  delete [] z;
+}
+
+/*!
+   Computes the n-d array of shape (16)
+
+   @param[out] a C-array of with 16 elements
+*/
+//  void Bicycle::gc_f_ogl(double m[16]) const;
+void Bicycle::gc_f_ogl(double m[16]) const {
+  double * z = new double[39];
+
+  z[0] = sin(azimuth);
+  z[1] = sin(elevation);
+  z[2] = sin(state_[1]);
+  z[3] = sin(state_[2]);
+  z[4] = sin(state_[3]);
+  z[5] = sin(twist);
+  z[6] = cos(azimuth);
+  z[7] = cos(elevation);
+  z[8] = cos(state_[1]);
+  z[9] = cos(state_[2]);
+  z[10] = cos(state_[3]);
+  z[11] = cos(twist);
+  z[12] = sqrt(pow(z[8], 2));
+  z[13] = -cam_x - cam_z;
+  z[14] = z[0]*z[5] + z[1]*z[11]*z[6];
+  z[15] = z[0]*z[1]*z[5] + z[11]*z[6];
+  z[16] = z[0]*z[2]*z[7] + z[1]*z[8];
+  z[17] = z[0]*z[11] - z[1]*z[5]*z[6];
+  z[18] = z[0]*z[1]*z[11] - z[5]*z[6];
+  z[19] = z[0]*z[7]*z[8] - z[1]*z[2];
+  z[20] = -z[10]*z[8] + z[2]*z[3]*z[4];
+  z[21] = front_.R/z[12] - rear_.R/z[12] + front_.r - rear_.r;
+  z[22] = z[15]*z[8] + z[2]*z[5]*z[7];
+  z[23] = z[15]*z[2] - z[5]*z[7]*z[8];
+  z[24] = -z[16]*z[3] + z[6]*z[7]*z[9];
+  z[25] = -z[11]*z[2]*z[7] - z[18]*z[8];
+  z[26] = sqrt(pow(z[20], 2) + pow(z[4], 2)*pow(z[9], 2));
+  z[27] = z[14]*z[9] + z[3]*(z[11]*z[7]*z[8] - z[18]*z[2]);
+  z[28] = -z[17]*z[9] - z[23]*z[3];
+  z[29] = -z[1];
+  z[30] = -z[3];
+  z[31] = -z[9];
+  z[32] = -z[10];
+  z[33] = -z[31]*z[4];
+  z[34] = z[5]*z[7];
+  z[35] = z[6]*z[7];
+  z[36] = z[11]*z[7];
+  z[37] = z[2]*(front_.R - rear_.R)/z[12];
+  z[38] = z[7]/z[26];
+
+  m[0] = -(-z[15]*z[33] + z[17]*z[20])/z[26];
+  m[1] = -(z[14]*z[20] + z[18]*z[33])/z[26];
+  m[2] = z[38]*(z[0]*z[33] + z[20]*z[6]);
+  m[3] = 0;
+  m[4] = -(z[15]*z[20] + z[17]*z[33])/z[26];
+  m[5] = -(z[14]*z[33] - z[18]*z[20])/z[26];
+  m[6] = -z[38]*(z[0]*z[20] - z[33]*z[6]);
+  m[7] = 0;
+  m[8] = z[34];
+  m[9] = -z[36];
+  m[10] = z[29];
+  m[11] = 0;
+  m[12] = -front_.c*(z[22]*z[4] + z[28]*z[32]) - rear_.c*z[28] - cam_y*z[15] + ls_*(-z[17]*z[30] + z[23]*z[31]) + z[13]*z[17] + z[21]*z[34] - z[22]*z[37];
+  m[13] = -front_.c*(z[25]*z[4] - z[27]*z[32]) + rear_.c*z[27] + cam_y*z[18] + ls_*(-z[14]*z[30] + z[31]*(-z[18]*z[2] + z[36]*z[8])) + z[13]*z[14] - z[21]*z[36] - z[25]*z[37];
+  m[14] = -front_.c*(z[19]*z[4] + z[24]*z[32]) - rear_.c*z[24] - cam_y*z[0]*z[7] - ls_*(-z[16]*z[31] - z[30]*z[35]) - z[13]*z[35] - z[19]*z[37] + z[21]*z[29];
+  m[15] = 0;
+
+  delete [] z;
+}
+
+/*!
+   Computes the n-d array of shape (16)
+
+   @param[out] a C-array of with 16 elements
+*/
+//  void Bicycle::wc_f_ogl(double m[16]) const;
+void Bicycle::wc_f_ogl(double m[16]) const {
+  double * z = new double[44];
+
+  z[0] = sin(azimuth);
+  z[1] = sin(elevation);
+  z[2] = sin(state_[1]);
+  z[3] = sin(state_[2]);
+  z[4] = sin(state_[3]);
+  z[5] = sin(twist);
+  z[6] = cos(azimuth);
+  z[7] = cos(elevation);
+  z[8] = cos(state_[1]);
+  z[9] = cos(state_[2]);
+  z[10] = cos(state_[3]);
+  z[11] = cos(state_[5]);
+  z[12] = cos(twist);
+  z[13] = sqrt(pow(z[8], 2));
+  z[14] = -cam_x - cam_z;
+  z[15] = rear_.R/z[13] + rear_.r;
+  z[16] = z[0]*z[5] + z[1]*z[12]*z[6];
+  z[17] = z[0]*z[1]*z[5] + z[12]*z[6];
+  z[18] = z[0]*z[2]*z[7] + z[1]*z[8];
+  z[19] = z[0]*z[12] - z[1]*z[5]*z[6];
+  z[20] = z[0]*z[1]*z[12] - z[5]*z[6];
+  z[21] = z[0]*z[7]*z[8] - z[1]*z[2];
+  z[22] = z[17]*z[8] + z[2]*z[5]*z[7];
+  z[23] = z[18]*z[9] + z[3]*z[6]*z[7];
+  z[24] = z[17]*z[2] - z[5]*z[7]*z[8];
+  z[25] = -z[18]*z[3] + z[6]*z[7]*z[9];
+  z[26] = z[12]*z[7]*z[8] - z[2]*z[20];
+  z[27] = -z[12]*z[2]*z[7] - z[20]*z[8];
+  z[28] = z[16]*z[9] + z[26]*z[3];
+  z[29] = -z[19]*z[9] - z[24]*z[3];
+  z[30] = -z[19]*z[9] - z[24]*z[3];
+  z[31] = z[19]*z[3] - z[24]*z[9];
+  z[32] = z[16]*z[3] - z[26]*z[9];
+  z[33] = -z[10]*z[25] + z[21]*z[4];
+  z[34] = -z[10]*z[29] + z[22]*z[4];
+  z[35] = z[10]*z[28] + z[27]*z[4];
+  z[36] = -z[2];
+  z[37] = -z[3];
+  z[38] = -sin(state_[5]);
+  z[39] = -z[9];
+  z[40] = -z[10];
+  z[41] = -z[12];
+  z[42] = rear_.R/z[13];
+  z[43] = z[15]*z[7];
+
+  m[0] = z[11]*z[34] + z[31]*z[38];
+  m[1] = z[11]*z[35] + z[32]*z[38];
+  m[2] = z[11]*z[33] - z[23]*z[38];
+  m[3] = 0;
+  m[4] = -z[22]*z[40] + z[29]*z[4];
+  m[5] = -z[4]*(-z[16]*z[39] - z[26]*z[37]) - z[40]*(-z[20]*z[8] - z[36]*z[41]*z[7]);
+  m[6] = -z[21]*z[40] + z[25]*z[4];
+  m[7] = 0;
+  m[8] = z[11]*z[31] - z[34]*z[38];
+  m[9] = z[11]*z[32] - z[35]*z[38];
+  m[10] = -z[11]*z[23] - z[33]*z[38];
+  m[11] = 0;
+  m[12] = -front_.c*(z[22]*z[4] + z[30]*z[40]) - rear_.c*z[30] - cam_y*z[17] + ls_*(-z[19]*z[37] + z[24]*z[39]) + z[14]*z[19] - z[22]*z[36]*z[42] - z[43]*z[5];
+  m[13] = -front_.c*z[35] + rear_.c*z[28] + cam_y*z[20] + ls_*z[32] + z[14]*z[16] - z[27]*z[36]*z[42] - z[41]*z[43];
+  m[14] = -front_.c*(z[21]*z[4] + z[25]*z[40]) - rear_.c*z[25] - cam_y*z[0]*z[7] - ls_*z[23] + z[1]*z[15] - z[14]*z[6]*z[7] - z[21]*z[36]*z[42];
+  m[15] = 0;
+
+  delete [] z;
+}
+
+/*!
+   Computes the n-d array of shape (16)
+
+   @param[out] a C-array of with 16 elements
+*/
+//  void Bicycle::mc_f_ogl(double m[16]) const;
+void Bicycle::mc_f_ogl(double m[16]) const {
+  double * z = new double[42];
+
+  z[0] = sin(azimuth);
+  z[1] = sin(elevation);
+  z[2] = sin(state_[1]);
+  z[3] = sin(state_[2]);
+  z[4] = sin(state_[3]);
+  z[5] = sin(twist);
+  z[6] = cos(azimuth);
+  z[7] = cos(elevation);
+  z[8] = cos(state_[1]);
+  z[9] = cos(state_[2]);
+  z[10] = cos(state_[3]);
+  z[11] = cos(twist);
+  z[12] = cam_x + cam_z;
+  z[13] = front_.a - front_.c;
+  z[14] = sqrt(pow(z[8], 2));
+  z[15] = rear_.R/z[14] + rear_.r;
+  z[16] = z[0]*z[1]*z[5] + z[11]*z[6];
+  z[17] = z[0]*z[2]*z[7] + z[1]*z[8];
+  z[18] = z[0]*z[11] - z[1]*z[5]*z[6];
+  z[19] = z[0]*z[1]*z[11] - z[5]*z[6];
+  z[20] = z[0]*z[7]*z[8] - z[1]*z[2];
+  z[21] = -z[0]*z[5] - z[1]*z[11]*z[6];
+  z[22] = z[16]*z[8] + z[2]*z[5]*z[7];
+  z[23] = z[17]*z[9] + z[3]*z[6]*z[7];
+  z[24] = z[16]*z[2] - z[5]*z[7]*z[8];
+  z[25] = z[11]*z[7]*z[8] - z[19]*z[2];
+  z[26] = -z[23];
+  z[27] = -z[11]*z[2]*z[7] - z[19]*z[8];
+  z[28] = -z[17]*z[3] + z[6]*z[7]*z[9];
+  z[29] = -z[21]*z[9] + z[25]*z[3];
+  z[30] = -z[18]*z[9] - z[24]*z[3];
+  z[31] = z[18]*z[3] - z[24]*z[9];
+  z[32] = -z[21]*z[3] - z[25]*z[9];
+  z[33] = -z[10]*(-z[17]*z[3] + z[6]*z[7]*z[9]) + z[20]*z[4];
+  z[34] = -z[10]*z[30] + z[22]*z[4];
+  z[35] = z[10]*z[29] + z[27]*z[4];
+  z[36] = -rear_.c;
+  z[37] = -cam_y;
+  z[38] = -z[10];
+  z[39] = -z[11];
+  z[40] = rear_.R/z[14];
+  z[41] = z[15]*z[7];
+
+  m[0] = z[34];
+  m[1] = z[35];
+  m[2] = z[33];
+  m[3] = 0;
+  m[4] = -z[22]*z[38] + z[30]*z[4];
+  m[5] = -z[38]*(-z[19]*z[8] + z[2]*z[39]*z[7]) - z[4]*(-z[21]*z[9] + z[25]*z[3]);
+  m[6] = -z[20]*z[38] + z[28]*z[4];
+  m[7] = 0;
+  m[8] = z[31];
+  m[9] = z[32];
+  m[10] = -z[23];
+  m[11] = 0;
+  m[12] = front_.b*z[31] + ls_*z[31] - z[12]*z[18] + z[13]*z[34] + z[16]*z[37] + z[2]*z[22]*z[40] + z[30]*z[36] - z[41]*z[5];
+  m[13] = front_.b*z[32] + ls_*z[32] + z[12]*z[21] + z[13]*z[35] - z[19]*z[37] + z[2]*z[27]*z[40] - z[29]*z[36] - z[39]*z[41];
+  m[14] = front_.b*z[26] + ls_*z[26] + z[0]*z[37]*z[7] + z[1]*z[15] + z[12]*z[6]*z[7] + z[13]*z[33] + z[2]*z[20]*z[40] + z[28]*z[36];
+  m[15] = 0;
+
+  delete [] z;
+}
+
+/*!
+   Computes the n-d array of shape (16)
+
+   @param[out] a C-array of with 16 elements
+*/
+//  void Bicycle::N_ogl(double m[16]) const;
+void Bicycle::N_ogl(double m[16]) const {
+  double * z = new double[21];
+
+  z[0] = sin(azimuth);
+  z[1] = sin(elevation);
+  z[2] = sin(state_[0]);
+  z[3] = sin(twist);
+  z[4] = cos(azimuth);
+  z[5] = cos(elevation);
+  z[6] = cos(state_[0]);
+  z[7] = cos(twist);
+  z[8] = cam_x + cam_z;
+  z[9] = z[0]*z[6] - z[2]*z[4];
+  z[10] = z[0]*z[3] + z[1]*z[4]*z[7];
+  z[11] = z[0]*z[1]*z[3] + z[4]*z[7];
+  z[12] = z[0]*z[7] - z[1]*z[3]*z[4];
+  z[13] = z[0]*z[1]*z[7] - z[3]*z[4];
+  z[14] = z[10]*z[6] + z[13]*z[2];
+  z[15] = z[11]*z[6] + z[12]*z[2];
+  z[16] = z[10]*z[2] - z[13]*z[6];
+  z[17] = -z[11]*z[2] + z[12]*z[6];
+  z[18] = -z[4];
+  z[19] = z[0]*z[2];
+  z[20] = -z[18]*z[6];
+
+  m[0] = z[17];
+  m[1] = z[14];
+  m[2] = z[5]*(-z[19] - z[20]);
+  m[3] = 0;
+  m[4] = z[15];
+  m[5] = z[16];
+  m[6] = z[5]*z[9];
+  m[7] = 0;
+  m[8] = z[3]*z[5];
+  m[9] = -z[5]*z[7];
+  m[10] = -z[1];
+  m[11] = 0;
+  m[12] = -cam_y*z[11] - state_[6]*z[17] - state_[7]*z[15] - z[12]*z[8];
+  m[13] = cam_y*z[13] - state_[6]*z[14] - state_[7]*z[16] - z[10]*z[8];
+  m[14] = -z[5]*(cam_y*z[0] - state_[6]*(z[19] + z[20]) + state_[7]*z[9] + z[18]*z[8]);
+  m[15] = 0;
+
+  delete [] z;
+}
+
+/*!
    Computes the n-d array of shape (1)
 
    @param[out] a C-array of with 1 elements
 */
+//  void Bicycle::f_c(double m[1]) const;
 void Bicycle::f_c(double m[1]) const {
   double * z = new double[4];
 
@@ -26,6 +463,7 @@ void Bicycle::f_c(double m[1]) const {
 
    @param[out] a C-array of with 8 elements
 */
+//  void Bicycle::f_c_dq(double m[8]) const;
 void Bicycle::f_c_dq(double m[8]) const {
   double * z = new double[12];
 
@@ -59,6 +497,7 @@ void Bicycle::f_c_dq(double m[8]) const {
 
    @param[out] a C-array of with 36 elements
 */
+//  void Bicycle::f_v_coefficient(double m[36]) const;
 void Bicycle::f_v_coefficient(double m[36]) const {
   double * z = new double[31];
 
@@ -139,6 +578,7 @@ void Bicycle::f_v_coefficient(double m[36]) const {
 
    @param[out] a C-array of with 108 elements
 */
+//  void Bicycle::f_v_coefficient_dq(double m[108]) const;
 void Bicycle::f_v_coefficient_dq(double m[108]) const {
   double * z = new double[75];
 
@@ -335,6 +775,7 @@ void Bicycle::f_v_coefficient_dq(double m[108]) const {
 
    @param[out] a C-array of with 324 elements
 */
+//  void Bicycle::f_v_coefficient_dqdq(double m[324]) const;
 void Bicycle::f_v_coefficient_dqdq(double m[324]) const {
   double * z = new double[153];
 
@@ -825,6 +1266,7 @@ void Bicycle::f_v_coefficient_dqdq(double m[324]) const {
 
    @param[out] a C-array of with 8 elements
 */
+//  void Bicycle::kinematic_odes_rhs(double m[8]) const;
 void Bicycle::kinematic_odes_rhs(double m[8]) const {
   double * z = new double[12];
 
@@ -858,6 +1300,7 @@ void Bicycle::kinematic_odes_rhs(double m[8]) const {
 
    @param[out] a C-array of with 144 elements
 */
+//  void Bicycle::gif_dud(double m[144]) const;
 void Bicycle::gif_dud(double m[144]) const {
   double * z = new double[168];
 
@@ -1183,6 +1626,7 @@ void Bicycle::gif_dud(double m[144]) const {
 
    @param[out] a C-array of with 12 elements
 */
+//  void Bicycle::gif_ud_zero(double m[12]) const;
 void Bicycle::gif_ud_zero(double m[12]) const {
   double * z = new double[136];
 
@@ -1344,7 +1788,8 @@ void Bicycle::gif_ud_zero(double m[12]) const {
 
    @param[out] a C-array of with 240 elements
 */
-void Bicycle::gif_ud_zero_dqdu(double m[240]) {
+//  void Bicycle::gif_ud_zero_dqdu(double m[240]) const;
+void Bicycle::gif_ud_zero_dqdu(double m[240]) const {
   double * z = new double[589];
 
   z[0] = -2;
@@ -2186,16 +2631,10 @@ void Bicycle::gif_ud_zero_dqdu(double m[240]) {
 
    @param[out] a C-array of with 12 elements
 */
+//  void Bicycle::gaf(double m[12]) const;
 void Bicycle::gaf(double m[12]) const {
   double * z = new double[56];
 
-//  set_rear_contact_forces();
-//  set_rear_frame_forces();
-//  set_rear_frame_torques();
-//  set_front_contact_forces();
-//  set_front_frame_forces();
-//  set_front_frame_torques();
-//  set_steer_torque();
   z[0] = sin(state_[1]);
   z[1] = sin(state_[2]);
   z[2] = sin(state_[3]);
@@ -2274,16 +2713,10 @@ void Bicycle::gaf(double m[12]) const {
 
    @param[out] a C-array of with 360 elements
 */
+//  void Bicycle::gaf_dqdr(double m[360]) const;
 void Bicycle::gaf_dqdr(double m[360]) const {
   double * z = new double[146];
 
-//  set_rear_contact_forces();
-//  set_rear_frame_forces();
-//  set_rear_frame_torques();
-//  set_front_contact_forces();
-//  set_front_frame_forces();
-//  set_front_frame_torques();
-//  set_steer_torque();
   z[0] = sin(state_[1]);
   z[1] = sin(state_[2]);
   z[2] = sin(state_[3]);
@@ -2800,16 +3233,10 @@ void Bicycle::gaf_dqdr(double m[360]) const {
 
    @param[out] a C-array of with 96 elements
 */
+//  void Bicycle::gaf_dq(double m[96]) const;
 void Bicycle::gaf_dq(double m[96]) const {
   double * z = new double[134];
 
-//  set_rear_contact_forces();
-//  set_rear_frame_forces();
-//  set_rear_frame_torques();
-//  set_front_contact_forces();
-//  set_front_frame_forces();
-//  set_front_frame_torques();
-//  set_steer_torque();
   z[0] = sin(state_[1]);
   z[1] = sin(state_[2]);
   z[2] = sin(state_[3]);
@@ -3050,6 +3477,7 @@ void Bicycle::gaf_dq(double m[96]) const {
 
    @param[out] a C-array of with 264 elements
 */
+//  void Bicycle::gaf_dr(double m[264]) const;
 void Bicycle::gaf_dr(double m[264]) const {
   double * z = new double[43];
 
