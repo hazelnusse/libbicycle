@@ -42,7 +42,7 @@ class Bicycle {
   void kinematic_odes_rhs(double m[8]) const;
   void gif_dud(double m[144]) const;
   void gif_ud_zero(double m[12]) const;
-  void gif_ud_zero_dqdu(double m[240]);
+  void gif_ud_zero_dqdu(double m[240]) const;
   void gaf(double m[12]) const;
   void gaf_dq(double m[96]) const;
   void gaf_dr(double m[264]) const;

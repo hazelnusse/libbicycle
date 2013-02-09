@@ -15,12 +15,39 @@ assumptions to be made and allows for constraint force determination, or a
 tire contact force model can be added.  In the former case, the model has 3
 degrees of freedom; in the latter case, it has 7 degrees of freedom.
 """
-from sympy import symbols
+from sympy import symbols, zeros, pi
 from sympy.physics.mechanics import *
 import numpy as np
 Vector.simp = False
 from wheelassemblygyrostat import WheelAssemblyGyrostat
 from utility import NumpyArrayOutput
+
+def opengl_transformation_matrix(camera_frame, camera_origin,
+                                 object_frame, object_origin):
+    if isinstance(object_frame, ReferenceFrame):
+        dcm = camera_frame.dcm(object_frame)
+    else:       # User supplied a list of three basic vectors
+        dcm = zeros((3,3))
+        for i, uv_cf in enumerate(camera_frame):
+            for j in range(3):
+                dcm[i, j] = uv_cf & object_frame[j]
+
+    r = [object_origin.pos_from(camera_origin) & uv for uv in camera_frame]
+    m = np.zeros((16,), dtype=object)
+    m[0] = dcm[0, 0]
+    m[1] = dcm[1, 0]
+    m[2] = dcm[2, 0]
+    m[4] = dcm[0, 1]
+    m[5] = dcm[1, 1]
+    m[6] = dcm[2, 1]
+    m[8] = dcm[0, 2]
+    m[9] = dcm[1, 2]
+    m[10] = dcm[2, 2]
+    m[12] = r[0]
+    m[13] = r[1]
+    m[14] = r[2]
+    m[15] = 1
+    return m
 
 def derivation():
     # ## Model description
@@ -162,9 +189,7 @@ def derivation():
          front.Fx, front.Fy, front.Fz,  # Forces at front mass center
          T_s, g])                       # Steer torque, gravity
 
-    # ### Reference frames
-    #
-    # I declare 5 reference frames:
+    # Reference frames
     print("Defining orientations...")
     N = ReferenceFrame('N')                    # Inertial frame
     Y = N.orientnew('Y', 'Axis', [q[0], N.z])  # Rear yaw frame (heading)
@@ -173,6 +198,16 @@ def derivation():
     RW = R.orientnew('RW', 'Axis', [q[4], R.y])# Fixed to rear wheel
     F = R.orientnew('F', 'Axis', [q[3], R.z])  # Fixed to front frame (fork)
     FW = F.orientnew('FW', 'Axis', [q[5], F.y])# Fixed to front wheel
+    # Camera related references frames
+    cam_angles = symbols('azimuth elevation twist')
+    cam_position = symbols('cam_x cam_y cam_z')
+    C_az = Y.orientnew('C_az', 'Axis', [cam_angles[0], -Y.z])       # Azimuth
+    C_el = C_az.orientnew('C_el', 'Axis', [cam_angles[1], -C_az.y]) # Elevation
+    C_twist = C_el.orientnew('C', 'Axis', [cam_angles[2], C_el.x])  # Twist
+    # OpenGL camera has x right, y up, and is pointed down -z axis, the
+    # following rotatations make this happen
+    C_intermediate = C_twist.orientnew('C_', 'Axis', [pi/2, C_twist.z])
+    C = C_intermediate.orientnew('C', 'Axis', [pi/2, -C_intermediate.x])
 
     # Angular velocity of frames
     print("Defining angular velocities...")
@@ -197,6 +232,7 @@ def derivation():
 
     print("Defining positions of rear assembly points...")
     gc_r = Point('gc_r')                               # Ground contact, rear
+    NO = gc_r.locatenew('NO', -q[6]*N.x - q[7]*N.y)    # Inertial origin
     wc_r = gc_r.locatenew('wc_r',                      # Wheel center, rear
                           -rear.r*Y.z - rear.R*wc_tc_uv_r)
     mc_r = wc_r.locatenew('mc_r',                      # Mass center, rear
@@ -211,7 +247,26 @@ def derivation():
                           front.a*F.x + front.b*F.z)
     sa_f = wc_f.locatenew('sa_f', front.c*F.x)         # Steer axis, front
 
-    # Defining kinematic differential equations
+    sa_f.set_pos(sa_r, ls*R.z)                         # Connect assemblies
+
+    print("Defining postion of camera relative to rear wheel contact...")
+    cam_origin = gc_r.locatenew('cam_origin', cam_position[0]*Y.x
+                                            + cam_position[1]*Y.y
+                                            + cam_position[2]*Y.x)
+
+    print("Forming OpenGL transformation matrices...")
+    gc_r_ogl = opengl_transformation_matrix(C, cam_origin,
+                                            [wyf_x_r, wyf_y_r, Y.z], gc_r)
+    wc_r_ogl = opengl_transformation_matrix(C, cam_origin, RW, wc_r)
+    mc_r_ogl = opengl_transformation_matrix(C, cam_origin, R, mc_r)
+
+    gc_f_ogl = opengl_transformation_matrix(C, cam_origin,
+                                            [wyf_x_f, wyf_y_f, Y.z], gc_f)
+    wc_f_ogl = opengl_transformation_matrix(C, cam_origin, FW, wc_f)
+    mc_f_ogl = opengl_transformation_matrix(C, cam_origin, F, mc_f)
+    N_ogl    = opengl_transformation_matrix(C, cam_origin, N, NO)
+
+    print("Forming kinematic ODE's...")
     kinematic_odes_rhs = np.zeros((8,), dtype=object)
     for i, qdi in enumerate(qd[:6]):
         kinematic_odes_rhs[i] = u[i]
@@ -221,7 +276,7 @@ def derivation():
     kinematic_odes_rhs[7] = v_gc_rw & N.y
 
     print("Forming configuration constraint...")
-    f_c = np.array([dot(Y.z, sa_r.pos_from(gc_r) + ls*R.z + gc_f.pos_from(sa_f))])
+    f_c = np.array([Y.z & gc_f.pos_from(gc_r)])
     f_c_dq = np.array([f_c[0].diff(qi) for qi in q])
 
     print("Forming velocities of rear assembly points...")
@@ -356,6 +411,15 @@ def derivation():
     code = NumpyArrayOutput(['<cmath>', '"bicycle.h"'], namespaces=['std'])
     code.add_regex(r'([_0-9a-zA-Z]+)_(rear|front)', r'\2_.\1')
     code.set_states(q+u, 'state_')
+
+    print("Generating OpenGL modelview matrices...")
+    code.generate(gc_r_ogl, "Bicycle::gc_r_ogl")
+    code.generate(wc_r_ogl, "Bicycle::wc_r_ogl")
+    code.generate(mc_r_ogl, "Bicycle::mc_r_ogl")
+    code.generate(gc_f_ogl, "Bicycle::gc_f_ogl")
+    code.generate(wc_f_ogl, "Bicycle::wc_f_ogl")
+    code.generate(mc_f_ogl, "Bicycle::mc_f_ogl")
+    code.generate(N_ogl, "Bicycle::N_ogl")
 
     print("Generating configuration constraint (f_c) code...")
     code.generate(f_c, "Bicycle::f_c")

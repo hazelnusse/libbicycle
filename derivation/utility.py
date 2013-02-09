@@ -36,7 +36,7 @@ class NumpyArrayOutput(object):
 
         expressions_flat = np.zeros((expressions.size,), dtype=object)
         for i, ai in enumerate(expressions.flat):
-            if ai == 0:
+            if isinstance(ai, int):
                 expressions_flat[i] = S(0)
             else:
                 expressions_flat[i] = ai.subs(self.subs_dict)
@@ -45,7 +45,7 @@ class NumpyArrayOutput(object):
                                                         expressions_flat.size)
         if const_function:
             function_signature += " const"
-        s += "//  " + function_signature + ";"
+        s += "//  " + function_signature + ";\n"
         s += function_signature + " {\n"
 
         repl, redu = cse(expressions_flat, symbols=numbered_symbols("z"))
