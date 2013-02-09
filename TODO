@@ -4,13 +4,3 @@
 * Implement code to create linearized equation of motion matrices
 * Create boost.python wrappers to C++ Bicycle class
 * Implement tests to verify linearized equations of motion
-* Implement code to generate OpenGL 4x4 transformation matrices for:
-  * Rear wheel
-  * Front wheel
-  * Rear frame, centered at wheel axle
-  * Front frame, centered at wheel axle
-  * Rear frame, centered at mass center
-  * Front frame, centered at mass center
-  * Rear wheel yaw frame, centered at contact points
-  * Front wheel yaw frame, centered at contact points
-  * Inertial frame
