@@ -46,7 +46,7 @@ class NumpyArrayOutput(object):
         if const_function:
             function_signature += " const"
         s += "//  " + function_signature + ";\n"
-        s += function_signature + " {\n"
+        s += function_signature + "\n{\n"
 
         repl, redu = cse(expressions_flat, symbols=numbered_symbols("z"))
 

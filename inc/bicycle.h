@@ -8,19 +8,37 @@ class Whipple;
 
 class Bicycle {
  public:
+  typedef Eigen::Matrix<double, 8, 1> coordinates;
+  typedef Eigen::Matrix<double, 12, 1> speeds;
   typedef Eigen::Matrix<double, 20, 1> state;
 
   Bicycle();
 
-  void set_state(state & x);
+  void set_state(const state & x);
+  void set_state(int i, double xi);
+
+  void set_coordinates(const coordinates & q);
+  void set_coordinate(int i, double qi);
+
+  void set_speeds(const speeds & u);
+  void set_speed(int i, double ui);
+
+  void set_parameters(const WheelAssemblyGyrostat & rear,
+                      const WheelAssemblyGyrostat & front,
+                      double ls, double g);
   void set_parameters_from_whipple(const Whipple & w);
+
   void set_dependent_coordinate(int i);
+  void set_dependent_speeds(int dependent_speed_indices[3]);
 
   friend std::ostream & operator<<(std::ostream & os,
                                    const Bicycle & b);
 
   Eigen::Matrix<double, 6, 1> compute_contact_forces() const;
-  void solve_configuration_constraint_and_set_state(double ftol=1e-14, int iter=20);
+  Eigen::Matrix <double, 3, 9> compute_Bd_inverse_Bi() const;
+  void solve_configuration_constraint_and_set_state(double ftol=1e-14,
+                                                    int iter=20);
+  void solve_velocity_constraints_and_set_state();
 
 
 
@@ -59,4 +77,6 @@ class Bicycle {
   double azimuth, elevation, twist, cam_x, cam_y, cam_z;
   int dependent_coordinate_, dependent_speeds_[3];
 };
+
+#include "bicycle_priv.h"
 #endif

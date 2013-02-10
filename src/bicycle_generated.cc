@@ -9,7 +9,8 @@ using namespace std;
    @param[out] a C-array of with 16 elements
 */
 //  void Bicycle::gc_r_ogl(double m[16]) const;
-void Bicycle::gc_r_ogl(double m[16]) const {
+void Bicycle::gc_r_ogl(double m[16]) const
+{
   double * z = new double[15];
 
   z[0] = sin(azimuth);
@@ -54,7 +55,8 @@ void Bicycle::gc_r_ogl(double m[16]) const {
    @param[out] a C-array of with 16 elements
 */
 //  void Bicycle::wc_r_ogl(double m[16]) const;
-void Bicycle::wc_r_ogl(double m[16]) const {
+void Bicycle::wc_r_ogl(double m[16]) const
+{
   double * z = new double[33];
 
   z[0] = sin(azimuth);
@@ -117,7 +119,8 @@ void Bicycle::wc_r_ogl(double m[16]) const {
    @param[out] a C-array of with 16 elements
 */
 //  void Bicycle::mc_r_ogl(double m[16]) const;
-void Bicycle::mc_r_ogl(double m[16]) const {
+void Bicycle::mc_r_ogl(double m[16]) const
+{
   double * z = new double[32];
 
   z[0] = sin(azimuth);
@@ -179,7 +182,8 @@ void Bicycle::mc_r_ogl(double m[16]) const {
    @param[out] a C-array of with 16 elements
 */
 //  void Bicycle::gc_f_ogl(double m[16]) const;
-void Bicycle::gc_f_ogl(double m[16]) const {
+void Bicycle::gc_f_ogl(double m[16]) const
+{
   double * z = new double[39];
 
   z[0] = sin(azimuth);
@@ -322,7 +326,8 @@ void Bicycle::wc_f_ogl(double m[16]) const {
    @param[out] a C-array of with 16 elements
 */
 //  void Bicycle::mc_f_ogl(double m[16]) const;
-void Bicycle::mc_f_ogl(double m[16]) const {
+void Bicycle::mc_f_ogl(double m[16]) const
+{
   double * z = new double[42];
 
   z[0] = sin(azimuth);
@@ -394,7 +399,8 @@ void Bicycle::mc_f_ogl(double m[16]) const {
    @param[out] a C-array of with 16 elements
 */
 //  void Bicycle::N_ogl(double m[16]) const;
-void Bicycle::N_ogl(double m[16]) const {
+void Bicycle::N_ogl(double m[16]) const
+{
   double * z = new double[21];
 
   z[0] = sin(azimuth);
@@ -445,7 +451,8 @@ void Bicycle::N_ogl(double m[16]) const {
    @param[out] a C-array of with 1 elements
 */
 //  void Bicycle::f_c(double m[1]) const;
-void Bicycle::f_c(double m[1]) const {
+void Bicycle::f_c(double m[1]) const
+{
   double * z = new double[4];
 
   z[0] = sin(state_[1]);
@@ -498,7 +505,8 @@ void Bicycle::f_c_dq(double m[8]) const {
    @param[out] a C-array of with 36 elements
 */
 //  void Bicycle::f_v_coefficient(double m[36]) const;
-void Bicycle::f_v_coefficient(double m[36]) const {
+void Bicycle::f_v_coefficient(double m[36]) const
+{
   double * z = new double[31];
 
   z[0] = sin(state_[1]);
@@ -579,7 +587,8 @@ void Bicycle::f_v_coefficient(double m[36]) const {
    @param[out] a C-array of with 108 elements
 */
 //  void Bicycle::f_v_coefficient_dq(double m[108]) const;
-void Bicycle::f_v_coefficient_dq(double m[108]) const {
+void Bicycle::f_v_coefficient_dq(double m[108]) const
+{
   double * z = new double[75];
 
   z[0] = sin(state_[1]);
@@ -776,7 +785,8 @@ void Bicycle::f_v_coefficient_dq(double m[108]) const {
    @param[out] a C-array of with 324 elements
 */
 //  void Bicycle::f_v_coefficient_dqdq(double m[324]) const;
-void Bicycle::f_v_coefficient_dqdq(double m[324]) const {
+void Bicycle::f_v_coefficient_dqdq(double m[324]) const
+{
   double * z = new double[153];
 
   z[0] = -3;
@@ -1267,7 +1277,8 @@ void Bicycle::f_v_coefficient_dqdq(double m[324]) const {
    @param[out] a C-array of with 8 elements
 */
 //  void Bicycle::kinematic_odes_rhs(double m[8]) const;
-void Bicycle::kinematic_odes_rhs(double m[8]) const {
+void Bicycle::kinematic_odes_rhs(double m[8]) const
+{
   double * z = new double[12];
 
   z[0] = sin(state_[0]);
@@ -1301,7 +1312,8 @@ void Bicycle::kinematic_odes_rhs(double m[8]) const {
    @param[out] a C-array of with 144 elements
 */
 //  void Bicycle::gif_dud(double m[144]) const;
-void Bicycle::gif_dud(double m[144]) const {
+void Bicycle::gif_dud(double m[144]) const
+{
   double * z = new double[168];
 
   z[0] = sin(state_[1]);
@@ -1627,7 +1639,8 @@ void Bicycle::gif_dud(double m[144]) const {
    @param[out] a C-array of with 12 elements
 */
 //  void Bicycle::gif_ud_zero(double m[12]) const;
-void Bicycle::gif_ud_zero(double m[12]) const {
+void Bicycle::gif_ud_zero(double m[12]) const
+{
   double * z = new double[136];
 
   z[0] = sin(state_[1]);
@@ -1789,7 +1802,8 @@ void Bicycle::gif_ud_zero(double m[12]) const {
    @param[out] a C-array of with 240 elements
 */
 //  void Bicycle::gif_ud_zero_dqdu(double m[240]) const;
-void Bicycle::gif_ud_zero_dqdu(double m[240]) const {
+void Bicycle::gif_ud_zero_dqdu(double m[240]) const
+{
   double * z = new double[589];
 
   z[0] = -2;
@@ -2632,7 +2646,8 @@ void Bicycle::gif_ud_zero_dqdu(double m[240]) const {
    @param[out] a C-array of with 12 elements
 */
 //  void Bicycle::gaf(double m[12]) const;
-void Bicycle::gaf(double m[12]) const {
+void Bicycle::gaf(double m[12]) const
+{
   double * z = new double[56];
 
   z[0] = sin(state_[1]);
@@ -2714,7 +2729,8 @@ void Bicycle::gaf(double m[12]) const {
    @param[out] a C-array of with 360 elements
 */
 //  void Bicycle::gaf_dqdr(double m[360]) const;
-void Bicycle::gaf_dqdr(double m[360]) const {
+void Bicycle::gaf_dqdr(double m[360]) const
+{
   double * z = new double[146];
 
   z[0] = sin(state_[1]);
@@ -3234,7 +3250,8 @@ void Bicycle::gaf_dqdr(double m[360]) const {
    @param[out] a C-array of with 96 elements
 */
 //  void Bicycle::gaf_dq(double m[96]) const;
-void Bicycle::gaf_dq(double m[96]) const {
+void Bicycle::gaf_dq(double m[96]) const
+{
   double * z = new double[134];
 
   z[0] = sin(state_[1]);
@@ -3478,7 +3495,8 @@ void Bicycle::gaf_dq(double m[96]) const {
    @param[out] a C-array of with 264 elements
 */
 //  void Bicycle::gaf_dr(double m[264]) const;
-void Bicycle::gaf_dr(double m[264]) const {
+void Bicycle::gaf_dr(double m[264]) const
+{
   double * z = new double[43];
 
   z[0] = sin(state_[1]);

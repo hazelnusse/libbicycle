@@ -1,7 +1,8 @@
 #include "bicycle.h"
 #include "whipple.h"
 
-void Bicycle::set_parameters_from_whipple(const Whipple & w) {
+void Bicycle::set_parameters_from_whipple(const Whipple & w)
+{
   double * z = new double[61];
 
   z[0] = sin(w.lambda);
@@ -92,4 +93,3 @@ void Bicycle::set_parameters_from_whipple(const Whipple & w) {
 
   delete [] z;
 }
-
