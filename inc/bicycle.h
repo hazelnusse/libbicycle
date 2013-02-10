@@ -14,19 +14,14 @@ class Bicycle {
 
   void set_state(state & x);
   void set_parameters_from_whipple(const Whipple & w);
+  void set_dependent_coordinate(int i);
 
   friend std::ostream & operator<<(std::ostream & os,
                                    const Bicycle & b);
 
-  void set_rear_contact_forces() {}
-  void set_rear_frame_forces() {}
-  void set_rear_frame_torques() {}
-  void set_front_contact_forces() {}
-  void set_front_frame_forces() {}
-  void set_front_frame_torques() {}
-  void set_steer_torque() {}
-
   Eigen::Matrix<double, 6, 1> compute_contact_forces() const;
+  void solve_configuration_constraint_and_set_state(double ftol=1e-14, int iter=20);
+
 
 
   // This is to ensure state has 128-bit alignment and hence vectorizable
