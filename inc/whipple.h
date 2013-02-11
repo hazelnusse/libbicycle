@@ -38,14 +38,14 @@ class Whipple {
          IBxx,  /**< rear frame central moment of inertia relative to x direction */
          IByy,  /**< rear frame central moment of inertia relative to y direction */
          IBzz,  /**< rear frame central moment of inertia relative to z direction */
-         IBxz,  /**< rear frame central moment product of inertia relative to x and z directions */
+         IBxz,  /**< rear frame central product of inertia relative to x and z directions */
          xH,    /**< front frame position center of mass location in x direction from rear contact */
          zH,    /**< front frame position center of mass location in z direction from rear contact */
          mH,    /**< front frame mass */
          IHxx,  /**< front frame central moment of inertia relative to x direction */
          IHyy,  /**< front frame central moment of inertia relative to y direction */
          IHzz,  /**< front frame central moment of inertia relative to z direction */
-         IHxz,  /**< front frame central moment product of inertia relative to x and z directions */
+         IHxz,  /**< front frame central product of inertia relative to x and z directions */
          rF,    /**< front wheel radius */
          mF,    /**< front wheel mass */
          IFxx,  /**< front wheel central moment of inertia relative to any diameter in wheel plane*/

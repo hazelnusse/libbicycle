@@ -159,7 +159,7 @@ class Bicycle {
    */
   void set_dependent_speeds(int indices[3]);
 
-  /** Stream extraction operator.
+  /** Stream insertion operator.
    *
    * \param[in,out] os Output stream.
    * \param[in] b Bicycle instance.
