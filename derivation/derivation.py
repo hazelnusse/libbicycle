@@ -242,7 +242,7 @@ def derivation():
     print("Defining positions of front assembly points...")
     gc_f = Point('gc_f')                               # Ground contact, front
     wc_f = gc_f.locatenew('wc_f',                      # Wheel center, front
-                          -front.r*Y.z - front.R*wc_tc_uv_r)
+                          -front.r*Y.z - front.R*wc_tc_uv_f)
     mc_f = wc_f.locatenew('mc_f',                      # Mass center, front
                           front.a*F.x + front.b*F.z)
     sa_f = wc_f.locatenew('sa_f', front.c*F.x)         # Steer axis, front
