@@ -9,7 +9,7 @@ int main() {
   // default dependent coordinate is pitch angle
   b.solve_configuration_constraint_and_set_state();
   std::cout << b << std::endl;
-  std::cout << b.compute_contact_forces() << std::endl;
+  std::cout << b.steady_contact_forces() << std::endl;
   // this should fail with an error to cerr but keep the state unchanged.
   b.set_dependent_coordinate(1);
   b.solve_configuration_constraint_and_set_state();

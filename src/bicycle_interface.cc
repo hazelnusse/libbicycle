@@ -43,26 +43,16 @@ void Bicycle::set_dependent_coordinate(int i)
   dependent_coordinate_ = i;
 }
 
-void Bicycle::set_dependent_speeds(int dependent_speed_indices[3])
+void Bicycle::set_dependent_speeds(int indices[3])
 {
-  int dependent_speed_indices_prev[3];
-  for (int i = 0; i < 3; ++i) {
-    dependent_speed_indices_prev[i] = dependent_speed_indices[i];
-  }
-
-  for (int i = 0; i < 3; ++i) {
-    const int index = dependent_speed_indices[i];
-    if (index < 0 || index > 5) {
-      std::cerr << "Invalid dependent speed.  Ignoring request." << std::endl
-        << "Dependent speeds indices must be 0, 1, 2, 3, 4, or 5." << std::endl
-        << "These indices correspond to the 6 angular rates."
-        << "Dependent speeds have not been changed." << std::endl;
-      for (int j = 0; j < 3; ++j) {
-        dependent_speeds_[j] = dependent_speed_indices_prev[j];
-      }
-      break;
-    } else {
-      dependent_speeds_[i] = index;
+  if (indices[0] == indices[1] ||
+      indices[0] == indices[2] ||
+      indices[1] == indices[2]) {
+    std::cerr << "Invalid dependent speeds.  Speed indices must be unique."
+      << std::endl;
+  } else {
+    for (int i = 0; i < 3; ++i) {
+      dependent_speeds_[i] = indices[i];
     }
   }
 }

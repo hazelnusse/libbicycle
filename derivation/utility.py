@@ -26,13 +26,12 @@ class NumpyArrayOutput(object):
         """
 
         orig_shape = expressions.shape
-        s =  "/*!\n"
-        s += "   Computes the n-d array of shape ("
+        s =  "\n/** Computes the n-d array of shape ("
         for d in expressions.shape[:-1]:
             s += "{0}, ".format(d)
-        s += "{0})\n\n".format(expressions.shape[-1])
-        s += "   @param[out] a C-array of with {0}".format(expressions.size)
-        s += " elements\n*/\n"
+        s += "{0})\n *\n".format(expressions.shape[-1])
+        s += " * @param[out] a C-array of with {0}".format(expressions.size)
+        s += " elements\n */\n"
 
         expressions_flat = np.zeros((expressions.size,), dtype=object)
         for i, ai in enumerate(expressions.flat):
@@ -83,7 +82,7 @@ class NumpyArrayOutput(object):
             s += tmp
             s += ";\n"
 
-        s += "\n  delete [] z;\n}\n\n"
+        s += "\n  delete [] z;\n}\n"
 
         self.s += s
 
@@ -103,11 +102,10 @@ class NumpyArrayOutput(object):
         if includes is not None:
             for i in includes:
                 s += "#include " + i + "\n"
-            s += "\n"
         if namespaces is not None:
+            s += "\n"
             for n in namespaces:
                 s += "using namespace " + n + ";\n"
-            s += "\n"
         return s
 
     def set_states(self, variables, prefix):

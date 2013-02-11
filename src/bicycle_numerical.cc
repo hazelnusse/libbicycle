@@ -1,7 +1,7 @@
 #include "bicycle.h"
 using namespace Eigen;
 
-Matrix<double, 6, 1> Bicycle::compute_contact_forces() const
+Matrix<double, 6, 1> Bicycle::steady_contact_forces() const
 {
   Matrix<double, 12, 1> gif;
   Matrix<double, 12, 22, RowMajor> gaf_dr_full;
@@ -12,6 +12,7 @@ Matrix<double, 6, 1> Bicycle::compute_contact_forces() const
   // TODO: modify to allow for external forces, external torques, and internal
   // torques to be accounted for.  The current implementation assumes
   // everything besides contact forces is equal to zero.
+  // TODO: modify to allow forces to be formed without assuming du/dt = 0
   Matrix<double, 12, 7, RowMajor> gaf_dr_reduced;
   gaf_dr_reduced << gaf_dr_full.block<12, 3>(0, 4),  // Rear contact forces
                     gaf_dr_full.block<12, 3>(0, 14), // Front contact forces
