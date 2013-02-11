@@ -69,6 +69,37 @@ class Bicycle {
    */
   typedef Eigen::Matrix<double, 20, 1> state;
 
+  /** 22 x 1 matrix of doubles with ordering:
+   *
+   * - Rear wheel axle torque
+   * - Rear assembly torque about x direction
+   * - Rear assembly torque about y direction
+   * - Rear assembly torque about z direction
+   * - Rear tire ground contact forces in x direction
+   * - Rear tire ground contact forces in y direction
+   * - Rear tire ground contact forces in z direction
+   * - Rear assembly force at mass center in x direction
+   * - Rear assembly force at mass center in y direction
+   * - Rear assembly force at mass center in z direction
+   * - Front wheel axle torque
+   * - Front assembly torque about x direction
+   * - Front assembly torque about y direction
+   * - Front assembly torque about z direction
+   * - Front tire ground contact forces in x direction
+   * - Front tire ground contact forces in y direction
+   * - Front tire ground contact forces in z direction
+   * - Front assembly force at mass center in x direction
+   * - Front assembly force at mass center in y direction
+   * - Front assembly force at mass center in z direction
+   * - Steer torque
+   * - Gravitational acceleration
+   *
+   * The last entry may seem a bit counterintuitive, but if gravity is viewed
+   * as an input that can vary, then it makes sense to consider it as an input.
+   *
+   */
+  typedef Eigen::Matrix<double, 22, 1> inputs;
+
   /** Default constructor.
    *
    * Initializes a bicycle with zero state and zero for all parameters except
@@ -87,7 +118,7 @@ class Bicycle {
    * configuration or velocity constraints.
    */
   void set_state(const state & x);
-  
+
   /** Set i-th state to xi.
    *
    * \param[in] i Index of state to set.

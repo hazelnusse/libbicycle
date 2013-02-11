@@ -177,7 +177,7 @@ def derivation():
 
     # Steer torque
     T_s = symbols('steer_torque_')
-    # Control/disturbance input vector, 15 x 1
+    # Control/disturbance input vector, 22 x 1
     r = np.array(
         [rear.Tw,                       # Rear wheel torque
          rear.Tx, rear.Ty, rear.Tz,     # Torques on rear frame
