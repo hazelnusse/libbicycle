@@ -2,6 +2,8 @@
 #include "bicycle.h"
 #include "whipple.h"
 
+using namespace bicycle;
+
 int main() {
   Bicycle b;      // Initial state is zero, all parameters zero, 9.81 gravity
   Whipple w;      // Benchmark Whipple parameter values

@@ -1,6 +1,8 @@
 #include <iomanip>
 #include "wheelassemblygyrostat.h"
 
+namespace bicycle {
+
 WheelAssemblyGyrostat::WheelAssemblyGyrostat()
   : Ixx(0.0), Iyy(0.0), Izz(0.0), Ixz(0.0),   J(0.0),
       m(0.0),   R(0.0),   r(0.0),   a(0.0),   b(0.0),
@@ -27,3 +29,5 @@ std::ostream & operator<<(std::ostream & os,
      << "c   = " << std::setw(25) <<   w.c << std::endl;
   return os;
 }
+
+} // namespace bicycle

@@ -1,6 +1,8 @@
 #ifndef BICYCLE_PRIV_H
 #define BICYCLE_PRIV_H
 
+namespace bicycle {
+
 inline void Bicycle::set_state(int i, double xi)
 {
   state_[i] = xi;
@@ -15,5 +17,7 @@ inline void Bicycle::set_speed(int i, double ui)
 {
   state_[i + kNumberOfCoordinates] = ui;
 }
+
+} // namespace bicycle
 
 #endif

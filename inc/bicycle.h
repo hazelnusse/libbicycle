@@ -3,8 +3,9 @@
 #include <iostream>
 #include <Eigen/Dense>
 #include "wheelassemblygyrostat.h"
+#include "whipple.h"
 
-class Whipple;
+namespace bicycle {
 
 /** A class representing a dynamic model of a bicycle.
  *
@@ -19,6 +20,33 @@ class Whipple;
  */
 class Bicycle {
  public:
+  /** Number of generalized coordinates.
+   *
+   * Includes dependent and independent coordinates.  This includes cyclic
+   * coordinates.
+   */
+  static const int kNumberOfCoordinates = 8;
+
+  /** Number of configuration constraints.
+   */
+  static const int kNumberOfConfigurationConstraints = 1;
+
+  /** Number of generalized speeds.
+   *
+   * Includes dependent and independent speeds.
+   */
+  static const int kNumberOfSpeeds = 12;
+
+  /** Number of velocity constraints.
+   *
+   */
+  static const int kNumberOfVelocityConstraints = 3;
+
+  /** Number of exogenous inputs.
+   *
+   */
+  static const int kNumberOfInputs = 22;
+
   /** 8 x 1 matrix of doubles with ordering:
    *
    * - Rear assembly yaw angle \f$\psi\f$
@@ -258,7 +286,7 @@ class Bicycle {
    *
    * \post The dependent speeds are solved for and the corresponding state
    * variables are set.
-   * 
+   *
    * The velocity constraints are of the form:
    * \f[
    *   B(q) u = 0
@@ -278,6 +306,19 @@ class Bicycle {
    */
   void solve_velocity_constraints_and_set_state();
 
+  /** Form linearized full mass matrix
+   *
+   * \returns a 20 x 20 coefficient matrix of dq/dt and du/dt
+   */
+  Eigen::Matrix<double, 20, 20, Eigen::RowMajor> mass_matrix_full() const;
+
+
+  /** Form linearized state matrix
+   *
+   * \returns a 20 x 16 coefficient matrix
+   */
+  Eigen::Matrix<double, 20, 16, Eigen::RowMajor> independent_state_matrix() const;
+
   // This is to ensure state has 128-bit alignment and hence vectorizable
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
@@ -292,24 +333,40 @@ class Bicycle {
   void N_ogl(double m[16]) const;
   void f_c(double m[1]) const;
   void f_c_dq(double m[8]) const;
-  void f_v_coefficient(double m[36]) const;
-  void f_v_coefficient_dq(double m[108]) const;
-  void f_v_coefficient_dqdq(double m[324]) const;
-  void kinematic_odes_rhs(double m[8]) const;
-  void gif_dud(double m[144]) const;
-  void gif_ud_zero(double m[12]) const;
-  void gif_ud_zero_dqdu(double m[240]) const;
-  void gaf(double m[12]) const;
-  void gaf_dq(double m[96]) const;
-  void gaf_dr(double m[264]) const;
-  void gaf_dqdr(double m[360]) const;
+  void f_v_coefficient(double m[kNumberOfVelocityConstraints*kNumberOfSpeeds]) const;
+  void f_v_coefficient_dq(double m[kNumberOfVelocityConstraints*kNumberOfSpeeds*3]) const;
+  void f_v_coefficient_dqdq(double m[kNumberOfVelocityConstraints*kNumberOfSpeeds*3*3]) const;
+  void kinematic_odes_rhs(double m[kNumberOfCoordinates]) const;
+  void f_1(double m[kNumberOfCoordinates]) const;
+  void f_1_dq(double m[kNumberOfCoordinates*kNumberOfCoordinates]) const;
+  void f_1_du(double m[kNumberOfCoordinates*kNumberOfSpeeds]) const;
+  void gif_dud(double m[kNumberOfSpeeds*kNumberOfSpeeds]) const;
+  void gif_ud_zero(double m[kNumberOfSpeeds]) const;
+  void gif_ud_zero_dq(double m[kNumberOfSpeeds*kNumberOfCoordinates]) const;
+  void gif_ud_zero_du(double m[kNumberOfSpeeds*kNumberOfSpeeds]) const;
+  void gif_ud_zero_dqdu(double m[kNumberOfSpeeds*(kNumberOfCoordinates + kNumberOfSpeeds)]) const;
+  void gaf(double m[kNumberOfSpeeds]) const;
+  void gaf_dq(double m[kNumberOfSpeeds*kNumberOfCoordinates]) const;
+  void gaf_dr(double m[kNumberOfSpeeds*kNumberOfInputs]) const;
+  void gaf_dqdr(double m[kNumberOfSpeeds*(kNumberOfCoordinates+kNumberOfInputs)]) const;
 
-  Eigen::Matrix <double, 3, 9> compute_Bd_inverse_Bi() const;
+  // Private member functions related to numerical analysis of dynamic
+  Eigen::Matrix <double, 3, 9, Eigen::RowMajor> Bd_inverse_Bi() const;
+  Eigen::Matrix<double, 8, 8, Eigen::RowMajor> M_qq() const;
+  Eigen::Matrix<double, 3, 8, Eigen::RowMajor> M_uqc() const;
+  Eigen::Matrix<double, 3, 12, Eigen::RowMajor> M_uuc() const;
+  Eigen::Matrix<double, 9, 8, Eigen::RowMajor> M_uqd() const;
+  Eigen::Matrix<double, 9, 12, Eigen::RowMajor> M_uud() const;
+  Eigen::Matrix<double, 8, 8, Eigen::RowMajor> A_qq() const;
+  Eigen::Matrix<double, 8, 12, Eigen::RowMajor> A_qu() const;
+  Eigen::Matrix<double, 3, 8, Eigen::RowMajor> A_uqc() const;
+  Eigen::Matrix<double, 3, 12, Eigen::RowMajor> A_uuc() const;
+  Eigen::Matrix<double, 9, 8, Eigen::RowMajor> A_uqd() const;
+  Eigen::Matrix<double, 9, 12,  Eigen::RowMajor> A_uud() const;
 
+  // Private members used for convenience
+  bool is_dependent_index(int i) const;
 
-  static const int kNumberOfCoordinates = 8;
-  static const int kNumberOfSpeeds = 12;
-  static const int kNumberOfVelocityConstraints = 3;
   state state_;
   WheelAssemblyGyrostat rear_, front_;
   double ls_, g_, steer_torque_;
@@ -317,5 +374,7 @@ class Bicycle {
   int dependent_coordinate_, dependent_speeds_[3];
 };
 
-#include "bicycle_priv.h"
+} // namespace bicycle
+
+#include "bicycle-inl.h"
 #endif

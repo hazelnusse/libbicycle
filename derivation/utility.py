@@ -71,7 +71,7 @@ class NumpyArrayOutput(object):
         s += "\n"
         for i, red_i in enumerate(redu):
             s += "  m[{0}] = ".format(i)
-            tmp = re.sub(r'z(\d+)', r'z[\1]', ccode(redu[i]))
+            tmp = re.sub(r'z(\d+)', r'z[\1]', ccode(red_i))
             if self.state_prefix:
                 tmp = re.sub(self.state_prefix + r'(\d+)',
                              self.state_prefix + r'[\1]', tmp)

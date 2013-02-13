@@ -2,6 +2,8 @@
 #define WHEELASSEMBLYGYROSTAT_H
 #include <iostream>
 
+namespace bicycle {
+
 /** Wheel assembly gyrostat parameters.
  *
  * This class contains the parameters used to describe a cylindrical gyrostat
@@ -55,4 +57,7 @@ class WheelAssemblyGyrostat {
           Fy,  /**< Force applied to gyrostat mass center in y direction */
           Fz;  /**< Force applied to gyrostat mass center in z direction */
 };
+
+} // namespace bicycle
+
 #endif

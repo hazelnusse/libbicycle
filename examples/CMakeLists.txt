@@ -6,5 +6,8 @@ target_link_libraries(constraint_forces bicycle)
 add_executable(dependent_speeds dependent_speeds.cc)
 target_link_libraries(dependent_speeds bicycle)
 
+add_executable(linearized_equations linearized_equations.cc)
+target_link_libraries(linearized_equations bicycle)
+
 add_executable(stream_output stream_output.cc)
 target_link_libraries(stream_output bicycle)

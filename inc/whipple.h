@@ -2,6 +2,7 @@
 #define WHIPPLE_H
 #include <cmath>
 
+namespace bicycle {
 /** Whipple bicycle model parameters.
  *
  * This class contains the parameters described in <a
@@ -53,5 +54,7 @@ class Whipple {
          tR,    /**< rear tire cross section radius */
          tF;    /**< rear tire cross section radius */
 };
+
+} // namespace bicycle
 
 #endif

@@ -15,7 +15,7 @@ assumptions to be made and allows for constraint force determination, or a
 tire contact force model can be added.  In the former case, the model has 3
 degrees of freedom; in the latter case, it has 7 degrees of freedom.
 """
-from sympy import symbols, zeros, pi
+from sympy import symbols, zeros, pi, S
 from sympy.physics.mechanics import *
 import numpy as np
 Vector.simp = False
@@ -267,13 +267,24 @@ def derivation():
     N_ogl    = opengl_transformation_matrix(C, cam_origin, N, NO)
 
     print("Forming kinematic ODE's...")
-    kinematic_odes_rhs = np.zeros((8,), dtype=object)
+    f_1 = np.zeros((8,), dtype=object)
+    f_1_dq = np.zeros((8, 8), dtype=object)
+    f_1_du = np.zeros((8, 12), dtype=object)
     for i, qdi in enumerate(qd[:6]):
-        kinematic_odes_rhs[i] = u[i]
+        f_1[i] = -u[i]
+        # f_1_dq[:6, :8] = 0_{6x8}
+        f_1_du[i, i] = S(-1)
 
     v_gc_rw = gc_r.pos_from(wc_r).diff(t, L).subs(qd_u_dict) + (L.ang_vel_in(RW) ^ gc_r.pos_from(wc_r))
-    kinematic_odes_rhs[6] = v_gc_rw & N.x
-    kinematic_odes_rhs[7] = v_gc_rw & N.y
+    f_1[6] = -(v_gc_rw & N.x)
+    f_1[7] = -(v_gc_rw & N.y)
+    for j, qj in enumerate(q):
+        f_1_dq[6, j] = f_1[6].diff(qj)
+        f_1_dq[7, j] = f_1[7].diff(qj)
+
+    for j, uj in enumerate(u):
+        f_1_du[6, j] = f_1[6].diff(uj)
+        f_1_du[7, j] = f_1[7].diff(uj)
 
     print("Forming configuration constraint...")
     f_c = np.array([Y.z & gc_f.pos_from(gc_r)])
@@ -365,6 +376,8 @@ def derivation():
     gif = np.zeros((len(u),), dtype=object)
     gif_ud_zero = np.zeros((len(u),), dtype=object)
     gif_dud = np.zeros((len(u), len(u)), dtype=object)
+    gif_ud_zero_dq = np.zeros((len(u), len(q)), dtype=object)
+    gif_ud_zero_du = np.zeros((len(u), len(u)), dtype=object)
     gif_ud_zero_dqdu = np.zeros((len(u), len(q) + len(u)), dtype=object)
 
     for i in range(len(u)):
@@ -394,7 +407,7 @@ def derivation():
         # Partial derivatives w.r.t q
         for j, qj in enumerate(q):
             gaf_dq[i, j] = gaf_dqdr[i, j] = gaf[i].diff(qj)
-            gif_ud_zero_dqdu[i, j] = gif_ud_zero[i].diff(qj)
+            gif_ud_zero_dq[i, j] = gif_ud_zero_dqdu[i, j] = gif_ud_zero[i].diff(qj)
 
         # Input coefficient matrix
         for j, rj in enumerate(r):
@@ -403,7 +416,7 @@ def derivation():
 
         # Mass matrix and partial derivatives w.r.t u
         for j, (uj, udj) in enumerate(zip(u, ud)):
-            gif_ud_zero_dqdu[i, j + len(q)] = gif_ud_zero[i].diff(uj)
+            gif_ud_zero_du[i, j] = gif_ud_zero_dqdu[i, j + len(q)] = gif_ud_zero[i].diff(uj)
             gif_dud[i, j] = gif[i].diff(udj)
 
 
@@ -436,28 +449,28 @@ def derivation():
           "(f_v_coefficient_dqdq) code...")
     code.generate(B_hess, "Bicycle::f_v_coefficient_dqdq")
 
-    print("Generating kinematic differential equations right hand sides " +
-          "(kinematic_odes_rhs) code...")
-    code.generate(kinematic_odes_rhs, "Bicycle::kinematic_odes_rhs")
+    print("Generating kinematic differential equations (f_1, f_1_dq, f_1_du)")
+    code.generate(f_1, "Bicycle::f_1")
+    code.generate(f_1_dq, "Bicycle::f_1_dq")
+    code.generate(f_1_du, "Bicycle::f_1_du")
 
     print("Generating mass matrix (gif_dud) code...")
     code.generate(gif_dud, "Bicycle::gif_dud")
     print("Generating coriolis/centripetal (gif_ud_zero) code...")
     code.generate(gif_ud_zero, "Bicycle::gif_ud_zero")
     print("Generating partial derivatives of coriolis/centripetal " +
-          "(gif_ud_zero_dqdu) code...")
+          "(gif_ud_zero_dq, gif_ud_zero_du, gif_ud_zero_dqdu) code...")
+    code.generate(gif_ud_zero_dq, "Bicycle::gif_ud_zero_dq")
+    code.generate(gif_ud_zero_du, "Bicycle::gif_ud_zero_du")
     code.generate(gif_ud_zero_dqdu, "Bicycle::gif_ud_zero_dqdu")
+
     print("Generating generalized active forces (gaf) code...")
     code.generate(gaf, "Bicycle::gaf")
-    print("Generating generalized active forces partial derivative matrix " +
-          "(gaf_dqdr) code...")
-    code.generate(gaf_dqdr, "Bicycle::gaf_dqdr")
-    print("Generating generalized active forces coordinate partial " +
-          "derivative matrix (gaf_dq) code...")
+    print("Generating generalized active forces partial derivative matrices " +
+          "(gaf_dq, gaf_dr, gaf_dqdr) code...")
     code.generate(gaf_dq, "Bicycle::gaf_dq")
-    print("Generating generalized active forces input coefficient matrix " +
-          "(gaf_dr) code...")
     code.generate(gaf_dr, "Bicycle::gaf_dr")
+    code.generate(gaf_dqdr, "Bicycle::gaf_dqdr")
 
     code.output("bicycle_generated.cc")
 

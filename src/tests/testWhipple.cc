@@ -2,8 +2,10 @@
 #include "whipple.h"
 #include "gtest/gtest.h"
 
+
 TEST(WhippleTest, DefaultConstructor)
 {
+  using bicycle::Whipple;
   Whipple a;
   EXPECT_EQ(a.w, 1.02);
   EXPECT_EQ(a.c, 0.08);

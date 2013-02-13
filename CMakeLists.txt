@@ -1,20 +1,19 @@
 project(BICYCLE CXX)
 cmake_minimum_required(VERSION 2.8)
 
-set(CMAKE_MODULE_PATH
-    ${BICYCLE_MODULE_PATH}
-    ${BICYCLE_SOURCE_DIR}/cmake/Modules/)
+set(CMAKE_MODULE_PATH ${BICYCLE_SOURCE_DIR}/cmake/Modules)
 
 option(BUILD_SHARED_LIBS "Build shared libraries." ON)
 option(BICYCLE_BUILD_TESTS "Build tests." ON)
 option(BICYCLE_BUILD_EXAMPLES "Build examples." ON)
 option(BICYCLE_BUILD_DOXYGEN_DOCS "Build doxygen documentation." ON)
+option(BICYCLE_BUILD_PYTHON_EXTENSION_MODULES "Build extension modules for Python" ON)
 
 # Set g++ compiler flags if GNU C++ compiler is being used
 if(CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS "-Wall -Wno-unused-local-typedefs -O2 -std=c++11")
     set(CMAKE_CXX_FLAGS_DEBUG "-Wall -Wno-unused-local-typedefs -O0 -std=c++11 -ggdb3")
-    set(CMAKE_CXX_FLAGS_RELEASE "-Wall -Wno-unused-local-typedefs -Weffc++ -O3 -std=c++11")
+    set(CMAKE_CXX_FLAGS_RELEASE "-Wall -Wno-unused-local-typedefs -O3 -std=c++11")
 endif()
 
 find_package(Eigen3 3.1)
@@ -51,17 +50,24 @@ endif()
 
 if (BICYCLE_BUILD_DOXYGEN_DOCS)
     find_package(Doxygen)
-    if (DOXYGEN_FOUND STREQUAL "NO")
-        message(FATAL_ERROR "Doxygen not found. Please get a copy http://www.doxygen.org")
+    if (DOXYGEN_FOUND)
+      # prepare doxygen configuration file
+      configure_file(${BICYCLE_SOURCE_DIR}/Doxyfile.in
+                     ${BICYCLE_BINARY_DIR}/Doxyfile)
+      add_custom_target(doc
+                        ${DOXYGEN_EXECUTABLE}
+                        ${BICYCLE_BINARY_DIR}/Doxyfile
+                        WORKING_DIRECTORY ${BICYCLE_BINARY_DIR}
+                        COMMENT "Generating API Documentation with Doxygen"
+                        VERBATIM)
+    else()
+      message(FATAL_ERROR "Doxygen executable not found.")
     endif()
-    # prepare doxygen configuration file
-    configure_file(${BICYCLE_SOURCE_DIR}/Doxyfile.in
-                   ${BICYCLE_BINARY_DIR}/Doxyfile)
-    add_custom_target(doc
-                      ${DOXYGEN_EXECUTABLE}
-                      ${BICYCLE_BINARY_DIR}/Doxyfile
-                      WORKING_DIRECTORY ${BICYCLE_BINARY_DIR}
-                      COMMENT "Generating API Documentation with Doxygen"
-                      VERBATIM)
 endif()
 
+if (BICYCLE_BUILD_PYTHON_EXTENSION_MODULES)
+  find_package(PythonLibs 3.2 REQUIRED)  # I am using the 3.2 C API
+  find_package(PythonInterp 3.2 REQUIRED)# I am using the 3.2 C API
+  find_package(NumPy 1.8 REQUIRED)       # I am using the new NumPy API
+  add_subdirectory(python_wrapper)
+endif()

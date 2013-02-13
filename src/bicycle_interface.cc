@@ -2,9 +2,12 @@
 #include <iomanip>
 #include "bicycle.h"
 
+namespace bicycle {
+
 Bicycle::Bicycle()
   : state_(state::Zero()), ls_(0.0), g_(9.81), steer_torque_(0.0),
-  dependent_coordinate_(2), dependent_speeds_{0, 2, 5}
+    azimuth(0.0), elevation(0.0), twist(0.0), cam_x(0.0), cam_y(0.0),
+    cam_z(0.0), dependent_coordinate_(2), dependent_speeds_{0, 2, 5}
 {
 }
 
@@ -90,3 +93,5 @@ std::ostream & operator<<(std::ostream & os,
      << "x[19] = " << std::setw(25) << b.state_[19] << "    (front wheel contact vertical rate)" << std::endl;
   return os;
 }
+
+} // namespace bicycle
