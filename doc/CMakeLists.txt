@@ -9,17 +9,17 @@ endif()
 configure_file(${BICYCLE_SOURCE_DIR}/doc/Doxyfile.in
                ${BICYCLE_BINARY_DIR}/doc/Doxyfile)
 
-configure_file(${BICYCLE_SOURCE_DIR}/doc/DoxygenLayout.xml.in
-               ${BICYCLE_BINARY_DIR}/doc/DoxygenLayout.xml)
+configure_file(${BICYCLE_SOURCE_DIR}/doc/html/DoxygenLayout.xml.in
+               ${BICYCLE_BINARY_DIR}/doc/html/DoxygenLayout.xml)
 
-configure_file(${BICYCLE_SOURCE_DIR}/doc/bicycle_header.html.in
-               ${BICYCLE_BINARY_DIR}/doc/bicycle_header.html)
+configure_file(${BICYCLE_SOURCE_DIR}/doc/html/bicycle_header.html.in
+               ${BICYCLE_BINARY_DIR}/doc/html/bicycle_header.html)
 
-configure_file(${BICYCLE_SOURCE_DIR}/doc/bicycle_footer.html.in
-               ${BICYCLE_BINARY_DIR}/doc/bicycle_footer.html)
+configure_file(${BICYCLE_SOURCE_DIR}/doc/html/bicycle_footer.html.in
+               ${BICYCLE_BINARY_DIR}/doc/html/bicycle_footer.html)
 
-configure_file(${BICYCLE_SOURCE_DIR}/doc/bicycle_stylesheet.css.in
-               ${BICYCLE_BINARY_DIR}/doc/bicycle_stylesheet.css)
+configure_file(${BICYCLE_SOURCE_DIR}/doc/html/bicycle_stylesheet.css.in
+               ${BICYCLE_BINARY_DIR}/doc/html/bicycle_stylesheet.css)
 
 add_custom_target(doc
                   ${DOXYGEN_EXECUTABLE}

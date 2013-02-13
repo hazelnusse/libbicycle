@@ -908,13 +908,13 @@ HTML_FILE_EXTENSION    = .html
 # have to redo this when upgrading to a newer version of doxygen or when
 # changing the value of configuration settings such as GENERATE_TREEVIEW!
 
-HTML_HEADER            = "${BICYCLE_BINARY_DIR}/doc/bicycle_header.html"
+HTML_HEADER            = "${BICYCLE_BINARY_DIR}/doc/html/bicycle_header.html"
 
 # The HTML_FOOTER tag can be used to specify a personal HTML footer for
 # each generated HTML page. If it is left blank doxygen will generate a
 # standard footer.
 
-HTML_FOOTER            = "${BICYCLE_BINARY_DIR}/doc/bicycle_footer.html"
+HTML_FOOTER            = "${BICYCLE_BINARY_DIR}/doc/html/bicycle_footer.html"
 
 # The HTML_EXTRA_STYLESHEET tag can be used to specify an additional
 # user-defined cascading style sheet that is included after the standard
