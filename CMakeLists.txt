@@ -55,22 +55,7 @@ endif()
 if (BICYCLE_BUILD_DOXYGEN_DOCS)
     find_package(Doxygen)
     if (DOXYGEN_FOUND)
-      set(MATHJAX_RELPATH "http://cdn.mathjax.org/mathjax/latest")
-      if (NOT BICYCLE_DOXYGEN_MATHJAX_USECDN)
-        if (NOT BICYCLE_DOXYGEN_MATHJAX_LOCAL STREQUAL "")
-          set(MATHJAX_RELPATH ${BICYCLE_DOXYGEN_MATHJAX_LOCAL})
-          message(${MATHJAX_RELPATH})
-        endif()
-      endif()
-      # prepare doxygen configuration file
-      configure_file(${BICYCLE_SOURCE_DIR}/Doxyfile.in
-                     ${BICYCLE_BINARY_DIR}/Doxyfile)
-      add_custom_target(doc
-                        ${DOXYGEN_EXECUTABLE}
-                        ${BICYCLE_BINARY_DIR}/Doxyfile
-                        WORKING_DIRECTORY ${BICYCLE_BINARY_DIR}
-                        COMMENT "Generating API Documentation with Doxygen"
-                        VERBATIM)
+      add_subdirectory(doc)
     else()
       message(FATAL_ERROR "Doxygen executable not found.")
     endif()
