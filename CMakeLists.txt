@@ -13,9 +13,9 @@ option(BICYCLE_BUILD_PYTHON_EXTENSION_MODULES "Build extension modules for Pytho
 
 # Set g++ compiler flags if GNU C++ compiler is being used
 if(CMAKE_COMPILER_IS_GNUCXX)
-    set(CMAKE_CXX_FLAGS "-Wall -Wno-unused-local-typedefs -O2 -std=c++11")
-    set(CMAKE_CXX_FLAGS_DEBUG "-Wall -Wno-unused-local-typedefs -O0 -std=c++11 -ggdb3")
-    set(CMAKE_CXX_FLAGS_RELEASE "-Wall -Wno-unused-local-typedefs -O3 -std=c++11")
+    set(CMAKE_CXX_FLAGS "-Wall -std=c++11 -Wno-unused-local-typedefs")
+    set(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb3")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 endif()
 
 find_package(Eigen3 3.1)

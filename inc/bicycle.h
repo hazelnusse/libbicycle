@@ -1,11 +1,19 @@
 #ifndef BICYCLE_H
 #define BICYCLE_H
 #include <iostream>
+#include <set>
 #include <Eigen/Dense>
 #include "wheelassemblygyrostat.h"
 #include "whipple.h"
 
 namespace bicycle {
+
+typedef double Real;
+typedef Eigen::Matrix<Real, Eigen::Dynamic, 1> Vector;
+typedef Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> RowMajorMatrix;
+typedef Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor> ColMajorMatrix;
+//typedef RowMajorMatrix Matrix;
+using namespace Eigen;
 
 /** A class representing a dynamic model of a bicycle.
  *
@@ -64,7 +72,7 @@ class Bicycle {
    * \f$\theta\f$ though for highly leaned configurations this may not be
    * appropriate.
    */
-  typedef Eigen::Matrix<double, 8, 1> coordinates;
+  typedef Eigen::Matrix<double, kNumberOfCoordinates, 1> coordinates;
 
   /** 12 x 1 matrix of doubles with ordering:
    *
@@ -88,14 +96,14 @@ class Bicycle {
    * the dependent speeds is \f$\dot{\psi}\f$, \f$\dot{\theta}\f$,
    * \f$\dot{\theta}_F\f$.
    */
-  typedef Eigen::Matrix<double, 12, 1> speeds;
+  typedef Eigen::Matrix<double, kNumberOfSpeeds, 1> speeds;
 
   /** 20 x 1 matrix of doubles with ordering:
    *
    * - Generalized coordinates (8 x 1 matrix of doubles)
    * - Generalized speeds (12 x 1 matrix of doubles)
    */
-  typedef Eigen::Matrix<double, 20, 1> state;
+  typedef Eigen::Matrix<double, kNumberOfCoordinates + kNumberOfSpeeds, 1> state;
 
   /** 22 x 1 matrix of doubles with ordering:
    *
@@ -212,11 +220,9 @@ class Bicycle {
 
   /** Set the dependent speeds.
    *
-   * \param[in] indices Indices of dependent speeds.
-   *
-   * Indices must be unique integers \f$\in [0, 11]\f$
+   * \param[in] s The set of dependent speeds indices.
    */
-  void set_dependent_speeds(int indices[3]);
+  void set_dependent_speeds(const std::set<int> & s);
 
   /** Stream insertion operator.
    *
@@ -232,21 +238,23 @@ class Bicycle {
    *
    * \pre State and parameters of bicycle are set.
    *
-   * \returns The constraint forces as a 6 x 1 matrix with ordering:
+   * \returns The constraint forces as a 7 x 1 matrix with ordering:
    * - \f$G_{Rx}\f$
    * - \f$G_{Ry}\f$
    * - \f$G_{Rz}\f$
    * - \f$G_{Fx}\f$
    * - \f$G_{Fy}\f$
    * - \f$G_{Fz}\f$
+   *   \f$\tau_s\f$
    *
-   * The components of this matrix are with respect to the rear and front wheel
-   * yaw frames, respectively. x is parallel to the intersection line of the
-   * wheel plane and the ground plane, y is perpendicular to x and in the
-   * ground plane, z is perpendicular to the ground plane and points downwards
-   * (to the half space opposite that which the bicycle is normally in).
+   * The first six components of this matrix are with respect to the rear and
+   * front wheel yaw frames, respectively. x is parallel to the intersection
+   * line of the wheel plane and the ground plane, y is perpendicular to x and
+   * in the ground plane, z is perpendicular to the ground plane and points
+   * downwards (to the half space opposite that which the bicycle is normally
+   * in).
    * */
-  Eigen::Matrix<double, 6, 1> steady_contact_forces() const;
+  RowMajorMatrix steady_constraint_forces() const;
 
   /** Solve configuration constraint.
    *
@@ -350,8 +358,8 @@ class Bicycle {
   void gaf_dr(double m[kNumberOfSpeeds*kNumberOfInputs]) const;
   void gaf_dqdr(double m[kNumberOfSpeeds*(kNumberOfCoordinates+kNumberOfInputs)]) const;
 
-  // Private member functions related to numerical analysis of dynamic
-  Eigen::Matrix <double, 3, 9, Eigen::RowMajor> Bd_inverse_Bi() const;
+  // Private member functions related to linearization of dynamic equations
+  RowMajorMatrix Bd_inverse_Bi() const;
   Eigen::Matrix<double, 8, 8, Eigen::RowMajor> M_qq() const;
   Eigen::Matrix<double, 3, 8, Eigen::RowMajor> M_uqc() const;
   Eigen::Matrix<double, 3, 12, Eigen::RowMajor> M_uuc() const;
@@ -364,14 +372,33 @@ class Bicycle {
   Eigen::Matrix<double, 9, 8, Eigen::RowMajor> A_uqd() const;
   Eigen::Matrix<double, 9, 12,  Eigen::RowMajor> A_uud() const;
 
+  RowMajorMatrix C_0() const;
+  RowMajorMatrix C_1() const;
+  RowMajorMatrix C_2() const;
+
+  RowMajorMatrix P_qd() const;
+  RowMajorMatrix P_qi() const;
+  
+  RowMajorMatrix P_ud() const;
+  RowMajorMatrix P_ui() const;
+
   // Private members used for convenience
   bool is_dependent_index(int i) const;
+  void update_coordinate_permutation();
+  void update_speed_permutation();
+  void update_permutations();
+  RowMajorMatrix all_inputs_except_contact_forces() const;
 
-  state state_;
-  WheelAssemblyGyrostat rear_, front_;
-  double ls_, g_, steer_torque_;
+  // Private data
+  state state_;                        // Bicycle state, q's then u's
+  WheelAssemblyGyrostat rear_, front_; // Wheel gyrostats
+  double ls_, g_, steer_torque_;       // Steer axis offset, gravity, torque
+
+  int dependent_coordinate_;
+  std::set<int> dependent_speeds_;
+  RowMajorMatrix P_q_, P_u_;           // Permutation matrices
+  // Camera related variables
   double azimuth, elevation, twist, cam_x, cam_y, cam_z;
-  int dependent_coordinate_, dependent_speeds_[3];
 };
 
 } // namespace bicycle

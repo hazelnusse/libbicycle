@@ -375,6 +375,7 @@ def derivation():
     gaf_dr = np.zeros((len(u), len(r)), dtype=object)
     gif = np.zeros((len(u),), dtype=object)
     gif_ud_zero = np.zeros((len(u),), dtype=object)
+    gif_ud_zero_steady = np.zeros((len(u),), dtype=object)
     gif_dud = np.zeros((len(u), len(u)), dtype=object)
     gif_ud_zero_dq = np.zeros((len(u), len(q)), dtype=object)
     gif_ud_zero_du = np.zeros((len(u), len(u)), dtype=object)
@@ -403,6 +404,7 @@ def derivation():
 
         # Coriolis and centripel terms of generalized inertia forces
         gif_ud_zero[i] = gif[i].subs(ud_zero_dict)
+        gif_ud_zero_steady[i] = gif_ud_zero[i].subs({u[1]:0, u[2]:0, u[3]:0})
 
         # Partial derivatives w.r.t q
         for j, qj in enumerate(q):
@@ -418,7 +420,6 @@ def derivation():
         for j, (uj, udj) in enumerate(zip(u, ud)):
             gif_ud_zero_du[i, j] = gif_ud_zero_dqdu[i, j + len(q)] = gif_ud_zero[i].diff(uj)
             gif_dud[i, j] = gif[i].diff(udj)
-
 
     # Output code generation
     code = NumpyArrayOutput(['<cmath>', '"bicycle.h"'], namespaces=['std'])
@@ -458,6 +459,8 @@ def derivation():
     code.generate(gif_dud, "Bicycle::gif_dud")
     print("Generating coriolis/centripetal (gif_ud_zero) code...")
     code.generate(gif_ud_zero, "Bicycle::gif_ud_zero")
+    print("Generating steady coriolis/centripetal (gif_ud_zero_steady) code...")
+    code.generate(gif_ud_zero_steady, "Bicycle::gif_ud_zero_steady")
     print("Generating partial derivatives of coriolis/centripetal " +
           "(gif_ud_zero_dq, gif_ud_zero_du, gif_ud_zero_dqdu) code...")
     code.generate(gif_ud_zero_dq, "Bicycle::gif_ud_zero_dq")

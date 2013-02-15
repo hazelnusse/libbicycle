@@ -45,8 +45,11 @@ class WheelAssemblyGyrostat {
           r,   /**< Rotor minor radius */
           a,   /**< Gyrotstat position center of mass from rotor center relative to x direction */
           b,   /**< Gyrotstat position center of mass from rotor center relative to z direction */
-          c,   /**< Steer axis location from rotor center relative to x direction */
-          Tw,  /**< Torque applied to rotor from carrier about axle axis  */
+          c;   /**< Steer axis location from rotor center relative to x direction */
+
+ private:
+  friend class Bicycle; /**< So Bicycle can access forces/torques */
+  double  Tw,  /**< Torque applied to rotor from carrier about axle axis  */
           Tx,  /**< Torque applied to carrier about x direction */
           Ty,  /**< Torque applied to carrier about y direction */
           Tz,  /**< Torque applied to carrier about z direction */

@@ -1,14 +1,27 @@
+#include <algorithm>
+#include <set>
 #include <iostream>
 #include <iomanip>
 #include "bicycle.h"
 
 namespace bicycle {
 
+// We must have definitions of static const members even if we define them in
+// the header.  Weird linker errors can (and have occured if they are declared
+// but not defined.
+const int Bicycle::kNumberOfCoordinates;
+const int Bicycle::kNumberOfConfigurationConstraints;
+const int Bicycle::kNumberOfSpeeds;
+const int Bicycle::kNumberOfVelocityConstraints;
+const int Bicycle::kNumberOfInputs;
+
 Bicycle::Bicycle()
   : state_(state::Zero()), ls_(0.0), g_(9.81), steer_torque_(0.0),
-    azimuth(0.0), elevation(0.0), twist(0.0), cam_x(0.0), cam_y(0.0),
-    cam_z(0.0), dependent_coordinate_(2), dependent_speeds_{0, 2, 5}
+    dependent_coordinate_(2), dependent_speeds_{0, 2, 5},
+    azimuth(0.0), elevation(0.0), twist(0.0),
+    cam_x(0.0), cam_y(0.0), cam_z(0.0)
 {
+  update_permutations();
 }
 
 void Bicycle::set_state(const state & x)
@@ -44,20 +57,82 @@ void Bicycle::set_dependent_coordinate(int i)
     return;
   }
   dependent_coordinate_ = i;
+  update_coordinate_permutation();
 }
 
-void Bicycle::set_dependent_speeds(int indices[3])
+void Bicycle::set_dependent_speeds(const std::set<int> & speed_indices)
 {
-  if (indices[0] == indices[1] ||
-      indices[0] == indices[2] ||
-      indices[1] == indices[2]) {
-    std::cerr << "Invalid dependent speeds.  Speed indices must be unique."
-      << std::endl;
+  if (speed_indices.size() != kNumberOfVelocityConstraints) {
+    std::cerr << "Three dependent speeds must be specified." << std::endl;
+  } else if (std::all_of(speed_indices.begin(),
+               speed_indices.end(),
+               [](int i){
+               return (i < 0) || (i > 5);})) {
+    std::cerr << "Dependent speeds must be in [0, 5]." << std::endl;
+  } else if(speed_indices.count(3)) {
+    std::cerr << "Steer rate must be an independent speed." << std::endl;
+  } else if(speed_indices.count(4) && speed_indices.count(5)) {
+    std::cerr << "Only one wheel rate may be dependent." << std::endl;
+  } else if(!speed_indices.count(4) && !speed_indices.count(5)) {
+    std::cerr << "At least one wheel rate must be dependent." << std::endl;
   } else {
-    for (int i = 0; i < 3; ++i) {
-      dependent_speeds_[i] = indices[i];
-    }
+    dependent_speeds_ = speed_indices;
+    update_speed_permutation();
   }
+}
+
+void Bicycle::update_coordinate_permutation()
+{
+  Eigen::Matrix<int, kNumberOfCoordinates, 1> s;
+  std::iota(s.data(), s.data() + kNumberOfCoordinates, 0); // fill with 0...11
+  // Move independent coordinate to front, dependent coordinate to back,
+  // preserving relative order
+  std::stable_partition(s.data(),
+      s.data() + kNumberOfCoordinates,
+      [&](int elem) { return elem != dependent_coordinate_;});
+
+  P_q_ = PermutationMatrix<kNumberOfCoordinates>(s).toDenseMatrix().cast<double>();
+}
+
+void Bicycle::update_speed_permutation()
+{
+  Eigen::Matrix<int, kNumberOfSpeeds, 1> s;
+  std::iota(s.data(), s.data() + kNumberOfSpeeds, 0); // fill with 0...11
+  // Move independent speeds to front, dependent speeds to back, preserving
+  // relative order
+  std::stable_partition(s.data(),
+      s.data() + kNumberOfSpeeds,
+      [&](int elem) { return !dependent_speeds_.count(elem); });
+
+  P_u_ = PermutationMatrix<kNumberOfSpeeds>(s).toDenseMatrix().cast<double>();
+}
+
+void Bicycle::update_permutations()
+{
+  update_coordinate_permutation();
+  update_speed_permutation();
+}
+
+
+RowMajorMatrix Bicycle::all_inputs_except_constraint_forces() const
+{
+  RowMajorMatrix r(15, 1);
+  r(0, 0) = rear_.Tw;
+  r(1, 0) = rear_.Tx;
+  r(2, 0) = rear_.Ty;
+  r(3, 0) = rear_.Tz;
+  r(4, 0) = rear_.Fx;
+  r(5, 0) = rear_.Fy;
+  r(6, 0) = rear_.Fz;
+  r(7, 0) = front_.Tw;
+  r(8, 0) = front_.Tx;
+  r(9, 0) = front_.Ty;
+  r(10, 0) = front_.Tz;
+  r(11, 0) = front_.Fx;
+  r(12, 0) = front_.Fy;
+  r(13, 0) = front_.Fz;
+  r(14, 0) = g_;
+  return r;
 }
 
 std::ostream & operator<<(std::ostream & os,
