@@ -45,9 +45,9 @@ RowMajorMatrix Bicycle::steady_constraint_forces() const
   // b = - (gif_steady.block<7, 1>(3, 0) + C_aux * gif_steady.block<3, 1>(9, 0));
 
   b.block<6, 1>(0, 0) -= (gaf_dr_full.block<6, 15>(3, 0)
-                + C_aux.block<6, 3>(1, 0) * gaf_dr_full.block<3, 15>(9, 0)) * all_inputs_except_contact_forces();
+                + C_aux.block<6, 3>(1, 0) * gaf_dr_full.block<3, 15>(9, 0)) * all_inputs_except_constraint_forces();
   b.block<1, 1>(6, 0) -= (gaf_dr_full.block<1, 15>(1, 0)
-                + C_aux.block<1, 3>(0, 0) * gaf_dr_full.block<3, 15>(9, 0)) * all_inputs_except_contact_forces();
+                + C_aux.block<1, 3>(0, 0) * gaf_dr_full.block<3, 15>(9, 0)) * all_inputs_except_constraint_forces();
 
   // Active force terms
   //b -= (gaf_dr_full.block<6, 16>(3, 0)

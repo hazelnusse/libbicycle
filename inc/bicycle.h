@@ -387,7 +387,7 @@ class Bicycle {
   void update_coordinate_permutation();
   void update_speed_permutation();
   void update_permutations();
-  RowMajorMatrix all_inputs_except_contact_forces() const;
+  RowMajorMatrix all_inputs_except_constraint_forces() const;
 
   // Private data
   state state_;                        // Bicycle state, q's then u's
