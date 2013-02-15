@@ -1,5 +1,6 @@
+#include <algorithm>
+#include <queue>
 #include "bicycle.h"
-//#include <algorithm>
 
 namespace bicycle {
 
@@ -108,6 +109,43 @@ RowMajorMatrix Bicycle::Bd_inverse_Bi() const
     C.block<kNumberOfVelocityConstraints, 1>(0, i) = decomposition.solve(-B.block<kNumberOfVelocityConstraints, 1>(0, i));
   }
   return C;
+}
+
+std::set<int> Bicycle::best_dependent_speeds() const
+{
+  RowMajorMatrix B(3, 12);
+  f_v_coefficient(B.data());
+  B = B.block<3, 6>(0, 0);
+  JacobiSVD<RowMajorMatrix> svd(B, ComputeThinV);
+
+  int r = svd.nonzeroSingularValues();
+  if (r < kNumberOfVelocityConstraints) {
+    std::cerr << "Not all constraints are active. The rank of the constraint "
+                 "matrix is " << r << std::endl << "You have been warned."
+                 << std::endl;
+  }
+  RowMajorMatrix R = svd.matrixV();
+  RowMajorMatrix d = R.rowwise().squaredNorm();
+  
+  std::priority_queue<std::pair<double, int>> q;
+  for (int i = 0; i < 6; ++i)
+    q.push(std::pair<double, int>(d(i, 0), i));
+ 
+  std::set<int> indices;
+  for (int i = 0; i < 3; ++i) {
+    indices.insert(q.top().second);
+    q.pop();
+  }
+
+  return indices;
+}
+
+int Bicycle::best_dependent_coordinate() const
+{
+  RowMajorMatrix df(8, 1);
+  f_c_dq(df.data());
+  df = df.cwiseAbs();
+  return std::distance(df.data(), std::max_element(df.data(), df.data() + 8));
 }
 
 bool Bicycle::is_dependent_index(int i) const

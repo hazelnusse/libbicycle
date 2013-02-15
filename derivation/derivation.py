@@ -163,6 +163,8 @@ def derivation():
     ud = [ui.diff(t) for ui in u]
     ud_zero_dict = {udi:0 for udi in ud}
     qd_u_dict = {qdi : ui for qdi, ui in zip(qd[:6], u[:6])}
+    steady_no_slip = {u[1]:0, u[2]:0, u[3]:0, u[6]:0, u[7]:0, u[8]:0, u[9]:0,
+                      u[10]:0, u[11]:0}
 
     # ### Applied forces and torques
     #
@@ -404,7 +406,7 @@ def derivation():
 
         # Coriolis and centripel terms of generalized inertia forces
         gif_ud_zero[i] = gif[i].subs(ud_zero_dict)
-        gif_ud_zero_steady[i] = gif_ud_zero[i].subs({u[1]:0, u[2]:0, u[3]:0})
+        gif_ud_zero_steady[i] = gif_ud_zero[i].subs(steady_no_slip)
 
         # Partial derivatives w.r.t q
         for j, qj in enumerate(q):

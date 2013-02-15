@@ -350,6 +350,7 @@ class Bicycle {
   void f_1_du(double m[kNumberOfCoordinates*kNumberOfSpeeds]) const;
   void gif_dud(double m[kNumberOfSpeeds*kNumberOfSpeeds]) const;
   void gif_ud_zero(double m[kNumberOfSpeeds]) const;
+  void gif_ud_zero_steady(double m[kNumberOfSpeeds]) const;
   void gif_ud_zero_dq(double m[kNumberOfSpeeds*kNumberOfCoordinates]) const;
   void gif_ud_zero_du(double m[kNumberOfSpeeds*kNumberOfSpeeds]) const;
   void gif_ud_zero_dqdu(double m[kNumberOfSpeeds*(kNumberOfCoordinates + kNumberOfSpeeds)]) const;
@@ -378,7 +379,7 @@ class Bicycle {
 
   RowMajorMatrix P_qd() const;
   RowMajorMatrix P_qi() const;
-  
+
   RowMajorMatrix P_ud() const;
   RowMajorMatrix P_ui() const;
 
@@ -388,6 +389,8 @@ class Bicycle {
   void update_speed_permutation();
   void update_permutations();
   RowMajorMatrix all_inputs_except_constraint_forces() const;
+  int best_dependent_coordinate() const;
+  std::set<int> best_dependent_speeds() const;
 
   // Private data
   state state_;                        // Bicycle state, q's then u's

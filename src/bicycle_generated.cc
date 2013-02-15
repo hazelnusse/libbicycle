@@ -2052,6 +2052,126 @@ void Bicycle::gif_ud_zero(double m[12]) const
   delete [] z;
 }
 
+/** Computes the n-d array of shape (12)
+ *
+ * @param[out] a C-array of with 12 elements
+ */
+//  void Bicycle::gif_ud_zero_steady(double m[12]) const;
+void Bicycle::gif_ud_zero_steady(double m[12]) const
+{
+  double * z = new double[94];
+
+  z[0] = sin(state_[1]);
+  z[1] = sin(state_[2]);
+  z[2] = sin(state_[3]);
+  z[3] = cos(state_[1]);
+  z[4] = cos(state_[2]);
+  z[5] = cos(state_[3]);
+  z[6] = pow(state_[8], 2);
+  z[7] = pow(z[0], 2);
+  z[8] = pow(z[1], 2);
+  z[9] = pow(z[3], 2);
+  z[10] = pow(z[4], 2);
+  z[11] = sqrt(z[9]);
+  z[12] = rear_.R/z[11] + rear_.r;
+  z[13] = rear_.a*z[1] - rear_.b*z[4];
+  z[14] = rear_.a*z[3]*z[4] + rear_.b*z[1]*z[3];
+  z[15] = z[0]*z[2] - z[1]*z[3]*z[5];
+  z[16] = -z[0]*z[1]*z[2] + z[3]*z[5];
+  z[17] = -z[16];
+  z[18] = -z[0]*z[5] - z[1]*z[2]*z[3];
+  z[19] = -z[0]*z[1]*z[5] - z[2]*z[3];
+  z[20] = rear_.a*state_[8]*z[3]*z[4] + rear_.b*state_[8]*z[1]*z[3];
+  z[21] = pow(z[15], 2);
+  z[22] = rear_.Ixx*state_[8]*z[1]*z[3] - rear_.Ixz*state_[8]*z[3]*z[4];
+  z[23] = rear_.Ixz*state_[8]*z[1]*z[3] - rear_.Izz*state_[8]*z[3]*z[4];
+  z[24] = state_[13] - state_[8]*z[18];
+  z[25] = rear_.R*z[0]*z[1]*z[3]/z[11] + rear_.a*z[0];
+  z[26] = rear_.R*z[0]*z[3]*z[4]/z[11] - rear_.b*z[0];
+  z[27] = front_.a*z[3]*z[4] - front_.b*z[15];
+  z[28] = front_.Ixx*state_[8]*z[15] + front_.Ixz*state_[8]*z[3]*z[4];
+  z[29] = front_.Ixz*state_[8]*z[15] + front_.Izz*state_[8]*z[3]*z[4];
+  z[30] = front_.a*state_[8]*z[3]*z[4] - front_.b*state_[8]*z[15];
+  z[31] = sqrt(z[10]*z[9] + z[21]);
+  z[32] = -rear_.Iyy*state_[8]*z[0]*z[1]*z[3] - rear_.J*state_[12]*z[1]*z[3] + z[0]*z[22];
+  z[33] = rear_.R*z[10]*z[3]/z[11] + rear_.R*z[3]*z[8]/z[11] + z[13];
+  z[34] = -rear_.Iyy*state_[8]*z[0]*z[3]*z[4] - rear_.J*state_[12]*z[3]*z[4] - z[0]*z[23];
+  z[35] = front_.R*z[2]*z[3]*z[4]/z[31] - front_.b*z[2];
+  z[36] = front_.R*z[3]*z[4]*z[5]/z[31] - front_.b*z[5];
+  z[37] = rear_.R*state_[8]*z[1]*z[3]*z[7]/z[11] + rear_.a*state_[8]*z[7] + z[20]*z[3]*z[4];
+  z[38] = front_.R*z[10]*z[2]*z[3]/z[31] - front_.b*z[2]*z[4];
+  z[39] = -rear_.R*state_[8]*z[3]*z[4]*z[7]/z[11] + rear_.b*state_[8]*z[7] + z[1]*z[20]*z[3];
+  z[40] = front_.R*z[15]/z[31] - front_.a;
+  z[41] = rear_.R*z[1]*z[3]*z[6]*z[7]/z[11] + rear_.a*z[6]*z[7] + state_[8]*z[20]*z[3]*z[4];
+  z[42] = -rear_.R*z[3]*z[4]*z[6]*z[7]/z[11] + rear_.b*z[6]*z[7] + state_[8]*z[1]*z[20]*z[3];
+  z[43] = front_.R*z[15]*z[5]/z[31] - front_.a*z[5];
+  z[44] = front_.R*z[15]*z[2]*z[4]/z[31] - front_.a*z[2]*z[4];
+  z[45] = -front_.R*z[18]*z[3]*z[4]/z[31] + front_.b*z[18];
+  z[46] = -front_.Iyy*state_[8]*z[18]*z[3]*z[4] + front_.J*state_[13]*z[3]*z[4] + z[18]*z[29];
+  z[47] = -rear_.R*z[0]*z[10]*z[11]*z[6] - rear_.R*z[0]*z[11]*z[6]*z[8] - rear_.a*z[0]*z[1]*z[3]*z[6] + rear_.b*z[0]*z[3]*z[4]*z[6];
+  z[48] = z[15]*z[29] - z[28]*z[3]*z[4];
+  z[49] = -front_.R*z[15]*z[18]/z[31] + front_.a*z[18];
+  z[50] = -front_.Iyy*state_[8]*z[15]*z[18] + front_.J*state_[13]*z[15] + z[18]*z[28];
+  z[51] = front_.R*z[1]*z[15]/z[31] - front_.R*z[10]*z[3]*z[5]/z[31] - front_.a*z[1] + front_.b*z[4]*z[5];
+  z[52] = z[1]*z[39] + z[37]*z[4];
+  z[53] = front_.R*z[15]*z[18]*z[24]/z[31] + front_.a*state_[8]*pow(z[18], 2) + z[3]*z[30]*z[4];
+  z[54] = -front_.R*z[18]*z[24]*z[3]*z[4]/z[31] - front_.b*state_[8]*pow(z[18], 2) + z[15]*z[30];
+  z[55] = -front_.R*state_[8]*z[15]*z[18]*z[24]/z[31] - front_.a*pow(z[18], 2)*z[6] - state_[8]*z[3]*z[30]*z[4];
+  z[56] = front_.R*state_[8]*z[18]*z[24]*z[3]*z[4]/z[31] + front_.b*pow(z[18], 2)*z[6] - state_[8]*z[15]*z[30];
+  z[57] = front_.R*z[10]*z[24]*z[9]/z[31] + front_.R*z[21]*z[24]/z[31] + front_.a*state_[8]*z[15]*z[18] + front_.b*state_[8]*z[18]*z[3]*z[4];
+  z[58] = front_.R*state_[8]*z[10]*z[24]*z[9]/z[31] + front_.R*state_[8]*z[21]*z[24]/z[31] + front_.a*z[15]*z[18]*z[6] + front_.b*z[18]*z[3]*z[4]*z[6];
+  z[59] = -front_.m;
+  z[60] = -rear_.m;
+  z[61] = front_.r*state_[13];
+  z[62] = state_[8]*z[3];
+  z[63] = -z[1];
+  z[64] = -z[4];
+  z[65] = -z[0]*z[63];
+  z[66] = z[0]*z[2];
+  z[67] = -z[0]*z[64];
+  z[68] = -z[3]*z[63];
+  z[69] = z[2]*z[3];
+  z[70] = -z[2]*z[64];
+  z[71] = -z[3]*z[64];
+  z[72] = -z[5]*z[64];
+  z[73] = pow(front_.r, 2)*state_[13]*state_[8];
+  z[74] = -z[10];
+  z[75] = rear_.R/z[11];
+  z[76] = z[6]*z[9];
+  z[77] = -pow(z[2], 2)*z[74];
+  z[78] = state_[12]*z[12];
+  z[79] = -front_.r*z[19];
+  z[80] = front_.r*z[17];
+  z[81] = state_[8]*z[15];
+  z[82] = -z[19]*z[2];
+  z[83] = -z[18]*z[6];
+  z[84] = -z[17]*z[63];
+  z[85] = z[17]*z[5];
+  z[86] = front_.R/z[31];
+  z[87] = z[61]/sqrt(pow(z[17], 2) + z[77]);
+  z[88] = state_[8]*z[40];
+  z[89] = z[12]*z[41];
+  z[90] = z[12]*z[42];
+  z[91] = state_[8]*z[46];
+  z[92] = state_[8]*z[48];
+  z[93] = -front_.r*z[56];
+
+  m[0] = -state_[8]*z[18]*z[48] - z[0]*z[62]*(z[22]*z[64] + z[23]*z[63]) + z[32]*z[62]*z[64] - z[34]*z[62]*z[63] + z[46]*z[81] + z[50]*z[62]*z[64] + z[59]*(state_[8]*z[17]*z[61]*(-z[17]*z[27] + z[19]*z[45] - z[49]*z[67]) + state_[8]*z[61]*z[70]*(-z[27]*z[70] - z[45]*z[72] - z[49]*z[63]) - z[27]*z[58] - z[45]*z[55] - z[49]*z[56]) + z[60]*(z[14]*z[47] + z[25]*z[42] + z[26]*z[41] - z[62]*z[78]*(z[14]*z[3] + z[25]*z[67] - z[26]*z[65]));
+  m[1] = state_[8]*z[32]*z[63] + state_[8]*z[34]*z[64] + state_[8]*z[50]*z[63] + z[59]*(state_[8]*z[17]*z[61]*(z[17]*z[51] - z[19]*z[38] + z[44]*z[67]) + state_[8]*z[61]*z[70]*(z[38]*z[72] + z[44]*z[63] + z[51]*z[70]) + z[17]*z[73] + z[38]*z[55] + z[44]*z[56] + z[51]*z[58] + z[55]*z[79] + z[58]*z[80] - z[67]*z[93]) + z[60]*(z[12]*z[3]*z[47] - z[12]*z[62]*z[78] + z[13]*z[47] + z[41]*z[65]*z[75] - z[42]*z[67]*z[75] + z[62]*z[78]*(-z[13]*z[3] - z[7]*z[74]*z[75] + z[7]*z[75]*z[8]) - z[65]*z[89] + z[67]*z[90]) - z[70]*z[92] + z[72]*z[91];
+  m[2] = z[2]*z[91] + z[5]*z[92] + z[59]*(-front_.r*z[5]*z[55]*z[71] + front_.r*z[58]*z[64]*z[69] + state_[8]*z[17]*z[61]*(-z[17]*z[35] + z[19]*z[36] - z[43]*z[67]) + state_[8]*z[61]*z[70]*(-z[35]*z[70] - z[36]*z[72] - z[43]*z[63]) - z[35]*z[58] - z[36]*z[55] - z[43]*z[56] + z[64]*z[69]*z[73] - z[68]*z[93]) + z[60]*(rear_.a*z[42] - rear_.b*z[41] - z[62]*z[78]*(-rear_.a*z[0]*z[64] - rear_.b*z[0]*z[63]) + z[68]*z[90] + z[71]*z[89]) - z[63]*z[76]*(rear_.Ixz*z[1] + rear_.Izz*z[64]) - z[64]*z[76]*(rear_.Ixx*z[1] + rear_.Ixz*z[64]);
+  m[3] = -front_.Iyy*z[15]*z[83] - front_.J*state_[13]*z[81] + z[59]*(pow(z[17], 2)*z[61]*z[88] + z[40]*z[58] + z[55]*(-front_.r*z[0]*z[5]*z[74] - z[63]*z[79]) - z[58]*(front_.r*z[66]*z[74] + z[63]*z[80]) + z[61]*z[77]*z[88] - z[66]*z[73]*z[74] + z[73]*z[84]) + z[83]*(front_.Ixx*z[15] + front_.Ixz*z[71]);
+  m[4] = z[12]*z[52]*z[60]*z[62];
+  m[5] = state_[8]*z[59]*(front_.r*z[53]*z[64]*(-z[82] + z[85]) + front_.r*z[54]*(-z[66]*z[74] + z[84]) + z[15]*z[54]*z[86] + z[17]*z[61]*z[64]*z[86]*(z[0]*z[15] - z[19]*z[3]) + z[53]*z[71]*z[86] + z[61]*z[70]*z[86]*(-z[15]*z[63] + z[3]*z[5]*z[74]));
+  m[6] = -z[52]*z[60]*z[62]/z[11];
+  m[7] = -z[60]*z[62]*(state_[8]*z[0]*z[33]*z[9] + z[3]*z[78] + z[37]*z[65] - z[39]*z[67])/z[11];
+  m[8] = -z[60]*z[62]*(state_[8]*z[33]*z[7] + z[37]*z[63] - z[39]*z[64]);
+  m[9] = -state_[8]*z[59]*(-z[53]*z[64]*(z[82] - z[85]) - z[54]*(z[66]*z[74] - z[84]))/sqrt(pow(z[17], 2) + z[77]);
+  m[10] = -state_[8]*z[59]*(pow(z[17], 2)*z[87] + z[53]*(z[17]*z[19] + z[2]*z[5]*z[74])/sqrt(pow(z[17], 2) + z[77]) + z[54]*z[64]*(z[0]*z[17] + z[2]*z[63])/sqrt(pow(z[17], 2) + z[77]) + z[57]*sqrt(pow(z[17], 2) + z[77]) + z[77]*z[87]);
+  m[11] = -state_[8]*z[59]*(z[15]*z[53] - z[18]*z[57] - z[54]*z[71]);
+
+  delete [] z;
+}
+
 /** Computes the n-d array of shape (12, 8)
  *
  * @param[out] a C-array of with 96 elements

@@ -113,7 +113,6 @@ void Bicycle::update_permutations()
   update_speed_permutation();
 }
 
-
 RowMajorMatrix Bicycle::all_inputs_except_constraint_forces() const
 {
   RowMajorMatrix r(15, 1);
