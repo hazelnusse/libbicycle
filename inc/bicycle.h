@@ -357,11 +357,9 @@ class Bicycle {
   void gif_ud_zero_steady(double ar[o]) const;
   void gif_ud_zero_dq(double ar[o * n]) const;
   void gif_ud_zero_du(double ar[o * o]) const;
-  void gif_ud_zero_dqdu(double ar[o * (n + o)]) const;
   void gaf(double ar[o]) const;
   void gaf_dq(double ar[o * n]) const;
   void gaf_dr(double ar[o * s]) const;
-  void gaf_dqdr(double ar[o * (n + s)]) const;
 
   // Private member functions related to linearization of dynamic equations
   RowMajorMatrix Bd_inverse_Bi() const;

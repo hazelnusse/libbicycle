@@ -12,14 +12,24 @@ configure_file(${BICYCLE_SOURCE_DIR}/doc/Doxyfile.in
 configure_file(${BICYCLE_SOURCE_DIR}/doc/html/DoxygenLayout.xml.in
                ${BICYCLE_BINARY_DIR}/doc/html/DoxygenLayout.xml)
 
-configure_file(${BICYCLE_SOURCE_DIR}/doc/html/bicycle_header.html.in
-               ${BICYCLE_BINARY_DIR}/doc/html/bicycle_header.html)
+configure_file(${BICYCLE_SOURCE_DIR}/doc/html/header.html.in
+               ${BICYCLE_BINARY_DIR}/doc/html/header.html)
 
-configure_file(${BICYCLE_SOURCE_DIR}/doc/html/bicycle_footer.html.in
-               ${BICYCLE_BINARY_DIR}/doc/html/bicycle_footer.html)
+configure_file(${BICYCLE_SOURCE_DIR}/doc/html/footer.html.in
+               ${BICYCLE_BINARY_DIR}/doc/html/footer.html)
 
-configure_file(${BICYCLE_SOURCE_DIR}/doc/html/bicycle_stylesheet.css.in
-               ${BICYCLE_BINARY_DIR}/doc/html/bicycle_stylesheet.css)
+configure_file(${BICYCLE_SOURCE_DIR}/doc/html/stylesheet.css.in
+               ${BICYCLE_BINARY_DIR}/doc/html/stylesheet.css)
+
+configure_file(${BICYCLE_SOURCE_DIR}/doc/latex/header.tex.in
+               ${BICYCLE_BINARY_DIR}/doc/latex/header.tex)
+
+configure_file(${BICYCLE_SOURCE_DIR}/doc/latex/footer.tex.in
+               ${BICYCLE_BINARY_DIR}/doc/latex/footer.tex)
+
+configure_file(${BICYCLE_SOURCE_DIR}/doc/latex/doxygen.sty.in
+               ${BICYCLE_BINARY_DIR}/doc/latex/doxygen.sty)
+
 
 add_custom_target(doc
                   ${DOXYGEN_EXECUTABLE}

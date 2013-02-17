@@ -1,20 +1,20 @@
-"""Derivation of equations of motion for an extended bicycle model.
+## \class Derivation
+#
+# This script derives symbolic equations of motion, along with a number of
+# related quantities and functions that are useful for the numerical analysis
+# of bicycles.  I refer to it as "extended" because it extends the Whipple
+# bicycle model in four ways:  wheels with elliptical cross sections instead of
+# knife-edged wheels, arbitrary frame and fork inertia (lateral symmetry is not
+# assumed), arbitrary frame and fork mass center location, wheel axle
+# misalignment angles (axle not assumed perpendicular to the traditional frame
+# plane), and steer axis offsets which allow for wheels to not be in the same
+# plane even when the steer angle is zero.  The contact model is such that
+# unspecified forces are applied in the lateral and longitudinal directions of
+# each wheel contact point; this approach permits either no-slip rolling
+# assumptions to be made and allows for constraint force determination, or a
+# tire contact force model can be added.  In the former case, the model has 3
+# degrees of freedom; in the latter case, it has 7 degrees of freedom.
 
-This script derives symbolic equations of motion, along with a number of
-related quantities and functions that are useful for the analysis of the
-bicycle.  I refer to it as "extended" because it extends the Whipple bicycle
-model in four ways:  wheels with elliptical cross sections instead of
-knife-edged wheels, arbitrary frame and fork inertia (lateral symmetry is not
-assumed), arbitrary frame and fork mass center location, wheel axle
-misalignment angles (axle not assumed perpendicular to the traditional frame
-plane), and steer axis offsets which allow for wheels to not be in the same
-plane even when the steer angle is zero.  The contact model is such that
-unspecified forces are applied in the lateral and longitudinal directions of
-each wheel contact point; this approach permits either no-slip rolling
-assumptions to be made and allows for constraint force determination, or a
-tire contact force model can be added.  In the former case, the model has 3
-degrees of freedom; in the latter case, it has 7 degrees of freedom.
-"""
 from sympy import symbols, zeros, pi, S
 from sympy.physics.mechanics import *
 import numpy as np
@@ -22,17 +22,29 @@ Vector.simp = False
 from wheelassemblygyrostat import WheelAssemblyGyrostat
 from utility import NumpyArrayOutput
 
-def opengl_transformation_matrix(camera_frame, camera_origin,
+## Generate a OpenGL modelview matrix as a column major length 16 numpy array
+#
+# @param[in] view_frame A ReferenceFrame which will be the reference frame of
+#            the view space
+# @param[in] view_origin A Point to be used as the origin of the view space
+# @param[in] object_frame A ReferenceFrame or a list of three basis vectors
+#            to be used as basis vectors for the object space
+# @param[in] object_origin A Point that will act as the origin of the model
+#            space
+# @returns A NumPy array of shape (16,) which represents an OpenGL modelview
+#          matrix (in column major storage layout) mapping object coordinates
+#          to view coordinates
+def opengl_transformation_matrix(view_frame, view_origin,
                                  object_frame, object_origin):
     if isinstance(object_frame, ReferenceFrame):
-        dcm = camera_frame.dcm(object_frame)
+        dcm = view_frame.dcm(object_frame)
     else:       # User supplied a list of three basic vectors
         dcm = zeros((3,3))
-        for i, uv_cf in enumerate(camera_frame):
+        for i, uv_cf in enumerate(view_frame):
             for j in range(3):
                 dcm[i, j] = uv_cf & object_frame[j]
 
-    r = [object_origin.pos_from(camera_origin) & uv for uv in camera_frame]
+    r = [object_origin.pos_from(view_origin) & uv for uv in view_frame]
     m = np.zeros((16,), dtype=object)
     m[0] = dcm[0, 0]
     m[1] = dcm[1, 0]
@@ -49,6 +61,9 @@ def opengl_transformation_matrix(camera_frame, camera_origin,
     m[15] = 1
     return m
 
+## Model derivation and C++ code generation
+#
+# 
 def derivation():
     # ## Model description
     # ### Parameters
@@ -304,21 +319,21 @@ def derivation():
     mc_f.v2pt_theory(wc_f, N, F)
     sa_f.v2pt_theory(wc_f, N, F)
 
-    print("Forming velocity constraint and coefficient matrices...")
+    print("Forming velocity constraint and partial derivative matrices...")
     f_v_vec = sa_r.vel(N) - sa_f.vel(N)
     f_v = np.zeros((3,), dtype=object)
-    B = np.zeros((3, 12), dtype=object)
-    B_dq = np.zeros((3, 12, 3), dtype=object)
-    B_hess = np.zeros((3, 12, 3, 3), dtype=object)
+    f_v_du = np.zeros((3, 12), dtype=object)
+    f_v_dudq = np.zeros((3, 12, 3), dtype=object)
+    f_v_dudqdq = np.zeros((3, 12, 3, 3), dtype=object)
 
     for i, uv in enumerate(F):
         f_v[i] = f_v_vec & uv
         for j, uj in enumerate(u):
-            B[i, j] = f_v[i].diff(uj)
+            f_v_du[i, j] = f_v[i].diff(uj)
             for k, qk in enumerate(q_min):
-                B_dq[i, j, k] = B[i, j].diff(qk)
+                f_v_dudq[i, j, k] = f_v_du[i, j].diff(qk)
                 for l, ql in enumerate(q_min):
-                    B_hess[i, j, k, l] = B_dq[i, j, k].diff(ql)
+                    f_v_dudqdq[i, j, k, l] = f_v_dudq[i, j, k].diff(ql)
 
     print("Forming rear assembly partial angular velocities...")
     R_N_pav, RW_N_pav, RW_R_pav = partial_velocity([R.ang_vel_in(N),
@@ -448,14 +463,14 @@ def derivation():
           "(f_c_dq) code...")
     code.generate(f_c_dq, "Bicycle::f_c_dq")
 
-    print("Generating constraint coefficient matrix (f_v_coefficient) code...")
-    code.generate(B, "Bicycle::f_v_coefficient")
+    print("Generating constraint coefficient matrix (f_v_du) code...")
+    code.generate(f_v_du, "Bicycle::f_v_du")
     print("Generating constraint coefficient Jacobian matrix " +
-          "(f_v_coefficient_dq) code...")
-    code.generate(B_dq, "Bicycle::f_v_coefficient_dq")
+          "(f_v_dudq) code...")
+    code.generate(f_v_dudq, "Bicycle::f_v_dudq")
     print("Generating constraint coefficient Hessian matrix " +
-          "(f_v_coefficient_dqdq) code...")
-    code.generate(B_hess, "Bicycle::f_v_coefficient_dqdq")
+          "(f_v_dudqdq) code...")
+    code.generate(f_v_dudqdq, "Bicycle::f_v_dudqdq")
 
     print("Generating kinematic differential equations (f_1, f_1_dq, f_1_du)")
     code.generate(f_1, "Bicycle::f_1")
