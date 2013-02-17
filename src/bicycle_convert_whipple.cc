@@ -3,7 +3,7 @@
 
 namespace bicycle {
 
-void Bicycle::set_parameters_from_whipple(const Whipple & w)
+void Bicycle::set_parameters(const Whipple & w)
 {
   double * z = new double[61];
 
@@ -96,4 +96,4 @@ void Bicycle::set_parameters_from_whipple(const Whipple & w)
   delete [] z;
 }
 
-} // bicycle namespace
+} // namespace bicycle

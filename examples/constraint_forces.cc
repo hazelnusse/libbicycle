@@ -7,7 +7,7 @@ using namespace bicycle;
 int main() {
   Bicycle b;      // Initial state is zero, all parameters zero, 9.81 gravity
   Whipple w;      // Benchmark Whipple parameter values
-  b.set_parameters_from_whipple(w);  // set Whipple parameters
+  b.set_parameters(w);  // set Whipple parameters
   b.solve_configuration_constraint_and_set_state();
   std::cout << b << std::endl;
   std::cout << b.steady_constraint_forces() << std::endl;

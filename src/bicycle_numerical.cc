@@ -91,24 +91,45 @@ void Bicycle::solve_velocity_constraints_and_set_state()
   int i = 0;
   for (auto it = dependent_speeds_.begin();
        it != dependent_speeds_.end(); ++it) {
-    state_[*it + kNumberOfCoordinates] = u_dependent(i++, 0);
+    state_[*it + n] = u_dependent(i++, 0);
   }
 }
 
 RowMajorMatrix Bicycle::Bd_inverse_Bi() const
 {
-  RowMajorMatrix B(3, 12);
+  RowMajorMatrix B(m, o);
   f_v_coefficient(B.data());  // compute velocity constraint coefficient matrix
-  B = (B*P_u_).eval();        // move dependent columns to the end
+  B = B * P_u_;        // move dependent columns to the end
+
+  // Decompose B_d
   FullPivHouseholderQR<RowMajorMatrix> decomposition;
-  decomposition.compute(B.block<kNumberOfVelocityConstraints,
-    kNumberOfVelocityConstraints>(0,
-              kNumberOfSpeeds - kNumberOfVelocityConstraints));  // compute decomposition of B_d
-  RowMajorMatrix C(kNumberOfVelocityConstraints, kNumberOfSpeeds - kNumberOfVelocityConstraints);
-  for (int i = 0; i < kNumberOfSpeeds - kNumberOfVelocityConstraints; ++i) {
-    C.block<kNumberOfVelocityConstraints, 1>(0, i) = decomposition.solve(-B.block<kNumberOfVelocityConstraints, 1>(0, i));
+  decomposition.compute(B.block<m,
+    m>(0,
+    o - m));
+
+  // Solve B_d * u_d = - B_i * u_i for (-B_d^-1 * B_i)
+  return decomposition.solve(-B.block<m,
+        o - m>(0, 0));
+}
+
+RowMajorMatrix Bicycle::f_v_dq() const
+{
+  RowMajorMatrix mat = RowMajorMatrix::Zero(m, n);
+  VectorXd B_dq_raw(108, 1);
+  f_v_coefficient_dq(B_dq_raw.data()); // Populate the raw data
+
+  // Perform 3 matrix multiplies of 3 x 12 * 12 x 1
+  // Each matrix multiply results in the gradient of f_v with respect to lean,
+  // pitch, or steer
+  // This could also be done by iterting over the 12 speeds and accumulating
+  // the product of a 3x3 matrix multiplied by each speed.
+  for (int i = 1; i < 4; ++i) { // lean, pitch, steer
+    mat.block<3, 1>(0, i) = Map<RowMajorMatrix, Unaligned,
+       Stride<36, 3>>(B_dq_raw.data() + i - 1, m,
+           o) * state_.block<o, 1>(n, 0);
   }
-  return C;
+
+  return mat;
 }
 
 std::set<int> Bicycle::best_dependent_speeds() const
@@ -119,10 +140,9 @@ std::set<int> Bicycle::best_dependent_speeds() const
   JacobiSVD<RowMajorMatrix> svd(B, ComputeThinV);
 
   int r = svd.nonzeroSingularValues();
-  if (r < kNumberOfVelocityConstraints) {
-    std::cerr << "Not all constraints are active. The rank of the constraint "
-                 "matrix is " << r << std::endl << "You have been warned."
-                 << std::endl;
+  if (r < m) {
+    std::cerr << "Not all constraints are active. Row rank of the constraint "
+                 "matrix is " << r << std::endl;
   }
   RowMajorMatrix R = svd.matrixV();
   RowMajorMatrix d = R.rowwise().squaredNorm();

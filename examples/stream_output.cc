@@ -8,6 +8,6 @@ int main() {
   Bicycle b;
   std::cout << b;
   Whipple w;
-  b.set_parameters_from_whipple(w);
+  b.set_parameters(w);
   std::cout << b;
 }

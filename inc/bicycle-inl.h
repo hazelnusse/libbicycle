@@ -15,7 +15,7 @@ inline void Bicycle::set_coordinate(int i, double qi)
 
 inline void Bicycle::set_speed(int i, double ui)
 {
-  state_[i + kNumberOfCoordinates] = ui;
+  state_[n + i] = ui;
 }
 
 } // namespace bicycle

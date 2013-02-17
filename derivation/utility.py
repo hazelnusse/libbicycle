@@ -30,7 +30,7 @@ class NumpyArrayOutput(object):
         for d in expressions.shape[:-1]:
             s += "{0}, ".format(d)
         s += "{0})\n *\n".format(expressions.shape[-1])
-        s += " * @param[out] a C-array of with {0}".format(expressions.size)
+        s += " * @param[out] ar a C-array of with {0}".format(expressions.size)
         s += " elements\n */\n"
 
         expressions_flat = np.zeros((expressions.size,), dtype=object)
@@ -40,7 +40,7 @@ class NumpyArrayOutput(object):
             else:
                 expressions_flat[i] = ai.subs(self.subs_dict)
 
-        function_signature = "void {0}(double m[{1}])".format(functionname,
+        function_signature = "void {0}(double ar[{1}])".format(functionname,
                                                         expressions_flat.size)
         if const_function:
             function_signature += " const"
@@ -70,7 +70,7 @@ class NumpyArrayOutput(object):
 
         s += "\n"
         for i, red_i in enumerate(redu):
-            s += "  m[{0}] = ".format(i)
+            s += "  ar[{0}] = ".format(i)
             tmp = re.sub(r'z(\d+)', r'z[\1]', ccode(red_i))
             if self.state_prefix:
                 tmp = re.sub(self.state_prefix + r'(\d+)',

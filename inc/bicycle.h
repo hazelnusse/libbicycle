@@ -33,27 +33,31 @@ class Bicycle {
    * Includes dependent and independent coordinates.  This includes cyclic
    * coordinates.
    */
-  static const int kNumberOfCoordinates = 8;
+  static const int n = 8;
 
   /** Number of configuration constraints.
    */
-  static const int kNumberOfConfigurationConstraints = 1;
+  static const int l = 1;
+
+  /** Number of non ignorable coordinates
+   */
+  static const int n_min = 3;
 
   /** Number of generalized speeds.
    *
    * Includes dependent and independent speeds.
    */
-  static const int kNumberOfSpeeds = 12;
+  static const int o = 12;
 
   /** Number of velocity constraints.
    *
    */
-  static const int kNumberOfVelocityConstraints = 3;
+  static const int m = 3;
 
   /** Number of exogenous inputs.
    *
    */
-  static const int kNumberOfInputs = 22;
+  static const int s = 22;
 
   /** 8 x 1 matrix of doubles with ordering:
    *
@@ -72,7 +76,7 @@ class Bicycle {
    * \f$\theta\f$ though for highly leaned configurations this may not be
    * appropriate.
    */
-  typedef Eigen::Matrix<double, kNumberOfCoordinates, 1> coordinates;
+  typedef Eigen::Matrix<double, n, 1> coordinates;
 
   /** 12 x 1 matrix of doubles with ordering:
    *
@@ -96,14 +100,14 @@ class Bicycle {
    * the dependent speeds is \f$\dot{\psi}\f$, \f$\dot{\theta}\f$,
    * \f$\dot{\theta}_F\f$.
    */
-  typedef Eigen::Matrix<double, kNumberOfSpeeds, 1> speeds;
+  typedef Eigen::Matrix<double, o, 1> speeds;
 
   /** 20 x 1 matrix of doubles with ordering:
    *
    * - Generalized coordinates (8 x 1 matrix of doubles)
    * - Generalized speeds (12 x 1 matrix of doubles)
    */
-  typedef Eigen::Matrix<double, kNumberOfCoordinates + kNumberOfSpeeds, 1> state;
+  typedef Eigen::Matrix<double, n + o, 1> state;
 
   /** 22 x 1 matrix of doubles with ordering:
    *
@@ -134,7 +138,7 @@ class Bicycle {
    * as an input that can vary, then it makes sense to consider it as an input.
    *
    */
-  typedef Eigen::Matrix<double, 22, 1> inputs;
+  typedef Eigen::Matrix<double, s, 1> inputs;
 
   /** Default constructor.
    *
@@ -180,7 +184,7 @@ class Bicycle {
    * \param[in] u Speeds to set.
    */
   void set_speeds(const speeds & u);
-  
+
   /** Set i-th speed to ui.
    *
    * \param[in] i Index of speed to set.
@@ -203,7 +207,7 @@ class Bicycle {
    *
    * \param[in] w Whipple parameters.
    */
-  void set_parameters_from_whipple(const Whipple & w);
+  void set_parameters(const Whipple & w);
 
   /** Set the dependent coordinate.
    *
@@ -260,7 +264,7 @@ class Bicycle {
    *
    * \param[in] ftol Tolerance used to terminate root finder.
    * \param[in] iter Maximum number of iterations.
-   * 
+   *
    * \pre The dependent coordinate has been properly selected and the value of
    * that coordinate has been set as an initial guess for the root finder.
    *
@@ -318,60 +322,61 @@ class Bicycle {
    *
    * \returns a 20 x 20 coefficient matrix of dq/dt and du/dt
    */
-  Eigen::Matrix<double, 20, 20, Eigen::RowMajor> mass_matrix_full() const;
-
+  RowMajorMatrix mass_matrix_full() const;
 
   /** Form linearized state matrix
    *
    * \returns a 20 x 16 coefficient matrix
    */
-  Eigen::Matrix<double, 20, 16, Eigen::RowMajor> independent_state_matrix() const;
+  RowMajorMatrix independent_state_matrix() const;
 
   // This is to ensure state has 128-bit alignment and hence vectorizable
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
  private:
   // Generated code, don't expose as this is an implementation detail
-  void gc_r_ogl(double m[16]) const;
-  void wc_r_ogl(double m[16]) const;
-  void mc_r_ogl(double m[16]) const;
-  void gc_f_ogl(double m[16]) const;
-  void wc_f_ogl(double m[16]) const;
-  void mc_f_ogl(double m[16]) const;
-  void N_ogl(double m[16]) const;
-  void f_c(double m[1]) const;
-  void f_c_dq(double m[8]) const;
-  void f_v_coefficient(double m[kNumberOfVelocityConstraints*kNumberOfSpeeds]) const;
-  void f_v_coefficient_dq(double m[kNumberOfVelocityConstraints*kNumberOfSpeeds*3]) const;
-  void f_v_coefficient_dqdq(double m[kNumberOfVelocityConstraints*kNumberOfSpeeds*3*3]) const;
-  void kinematic_odes_rhs(double m[kNumberOfCoordinates]) const;
-  void f_1(double m[kNumberOfCoordinates]) const;
-  void f_1_dq(double m[kNumberOfCoordinates*kNumberOfCoordinates]) const;
-  void f_1_du(double m[kNumberOfCoordinates*kNumberOfSpeeds]) const;
-  void gif_dud(double m[kNumberOfSpeeds*kNumberOfSpeeds]) const;
-  void gif_ud_zero(double m[kNumberOfSpeeds]) const;
-  void gif_ud_zero_steady(double m[kNumberOfSpeeds]) const;
-  void gif_ud_zero_dq(double m[kNumberOfSpeeds*kNumberOfCoordinates]) const;
-  void gif_ud_zero_du(double m[kNumberOfSpeeds*kNumberOfSpeeds]) const;
-  void gif_ud_zero_dqdu(double m[kNumberOfSpeeds*(kNumberOfCoordinates + kNumberOfSpeeds)]) const;
-  void gaf(double m[kNumberOfSpeeds]) const;
-  void gaf_dq(double m[kNumberOfSpeeds*kNumberOfCoordinates]) const;
-  void gaf_dr(double m[kNumberOfSpeeds*kNumberOfInputs]) const;
-  void gaf_dqdr(double m[kNumberOfSpeeds*(kNumberOfCoordinates+kNumberOfInputs)]) const;
+  void gc_r_ogl(double ar[16]) const;
+  void wc_r_ogl(double ar[16]) const;
+  void mc_r_ogl(double ar[16]) const;
+  void gc_f_ogl(double ar[16]) const;
+  void wc_f_ogl(double ar[16]) const;
+  void mc_f_ogl(double ar[16]) const;
+  void N_ogl(double ar[16]) const;
+  void f_c(double ar[1]) const;
+  void f_c_dq(double ar[8]) const;
+  void f_v_coefficient(double ar[m * o]) const;
+  void f_v_coefficient_dq(double ar[m * o * n_min]) const;
+  void f_v_coefficient_dqdq(double ar[m * o * n_min * n_min]) const;
+  void kinematic_odes_rhs(double ar[n]) const;
+  void f_1(double ar[n]) const;
+  void f_1_dq(double ar[n * n]) const;
+  void f_1_du(double ar[n * o]) const;
+  void gif_dud(double ar[o * o]) const;
+  void gif_dud_dq(double ar[o * o * n_min]) const;
+  void gif_ud_zero(double ar[o]) const;
+  void gif_ud_zero_steady(double ar[o]) const;
+  void gif_ud_zero_dq(double ar[o * n]) const;
+  void gif_ud_zero_du(double ar[o * o]) const;
+  void gif_ud_zero_dqdu(double ar[o * (n + o)]) const;
+  void gaf(double ar[o]) const;
+  void gaf_dq(double ar[o * n]) const;
+  void gaf_dr(double ar[o * s]) const;
+  void gaf_dqdr(double ar[o * (n + s)]) const;
 
   // Private member functions related to linearization of dynamic equations
   RowMajorMatrix Bd_inverse_Bi() const;
-  Eigen::Matrix<double, 8, 8, Eigen::RowMajor> M_qq() const;
-  Eigen::Matrix<double, 3, 8, Eigen::RowMajor> M_uqc() const;
-  Eigen::Matrix<double, 3, 12, Eigen::RowMajor> M_uuc() const;
-  Eigen::Matrix<double, 9, 8, Eigen::RowMajor> M_uqd() const;
-  Eigen::Matrix<double, 9, 12, Eigen::RowMajor> M_uud() const;
-  Eigen::Matrix<double, 8, 8, Eigen::RowMajor> A_qq() const;
-  Eigen::Matrix<double, 8, 12, Eigen::RowMajor> A_qu() const;
-  Eigen::Matrix<double, 3, 8, Eigen::RowMajor> A_uqc() const;
-  Eigen::Matrix<double, 3, 12, Eigen::RowMajor> A_uuc() const;
-  Eigen::Matrix<double, 9, 8, Eigen::RowMajor> A_uqd() const;
-  Eigen::Matrix<double, 9, 12,  Eigen::RowMajor> A_uud() const;
+  RowMajorMatrix f_v_dq() const;
+  RowMajorMatrix M_qq() const;
+  RowMajorMatrix M_uqc() const;
+  RowMajorMatrix M_uuc() const;
+  RowMajorMatrix M_uqd() const;
+  RowMajorMatrix M_uud() const;
+  RowMajorMatrix A_qq() const;
+  RowMajorMatrix A_qu() const;
+  RowMajorMatrix A_uqc() const;
+  RowMajorMatrix A_uuc() const;
+  RowMajorMatrix A_uqd() const;
+  RowMajorMatrix A_uud() const;
 
   RowMajorMatrix C_0() const;
   RowMajorMatrix C_1() const;

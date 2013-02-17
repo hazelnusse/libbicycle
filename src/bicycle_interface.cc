@@ -9,11 +9,11 @@ namespace bicycle {
 // We must have definitions of static const members even if we define them in
 // the header.  Weird linker errors can (and have occured if they are declared
 // but not defined.
-const int Bicycle::kNumberOfCoordinates;
-const int Bicycle::kNumberOfConfigurationConstraints;
-const int Bicycle::kNumberOfSpeeds;
-const int Bicycle::kNumberOfVelocityConstraints;
-const int Bicycle::kNumberOfInputs;
+const int Bicycle::n;
+const int Bicycle::l;
+const int Bicycle::o;
+const int Bicycle::m;
+const int Bicycle::s;
 
 Bicycle::Bicycle()
   : state_(state::Zero()), ls_(0.0), g_(9.81), steer_torque_(0.0),
@@ -53,7 +53,8 @@ void Bicycle::set_dependent_coordinate(int i)
 {
   if (!((i == 1) | (i == 2) | (i == 3))) {
     std::cerr << "Invalid dependent coordinate.  Ignoring request." << std::endl
-              << "dependent coordinate must be 1, 2, or 3 (lean, pitch, steer)." << std::endl;
+              << "dependent coordinate must be 1, 2, or 3 (lean, pitch, steer)."
+              << std::endl;
     return;
   }
   dependent_coordinate_ = i;
@@ -62,17 +63,13 @@ void Bicycle::set_dependent_coordinate(int i)
 
 void Bicycle::set_dependent_speeds(const std::set<int> & speed_indices)
 {
-  if (speed_indices.size() != kNumberOfVelocityConstraints) {
+  if (speed_indices.size() != m) {
     std::cerr << "Three dependent speeds must be specified." << std::endl;
-  } else if (std::all_of(speed_indices.begin(),
-               speed_indices.end(),
-               [](int i){
-               return (i < 0) || (i > 5);})) {
+  } else if (std::all_of(speed_indices.begin(), speed_indices.end(),
+               [](int i){ return (i < 0) || (i > 5); })) {
     std::cerr << "Dependent speeds must be in [0, 5]." << std::endl;
   } else if(speed_indices.count(3)) {
     std::cerr << "Steer rate must be an independent speed." << std::endl;
-  } else if(speed_indices.count(4) && speed_indices.count(5)) {
-    std::cerr << "Only one wheel rate may be dependent." << std::endl;
   } else if(!speed_indices.count(4) && !speed_indices.count(5)) {
     std::cerr << "At least one wheel rate must be dependent." << std::endl;
   } else {
@@ -83,28 +80,26 @@ void Bicycle::set_dependent_speeds(const std::set<int> & speed_indices)
 
 void Bicycle::update_coordinate_permutation()
 {
-  Eigen::Matrix<int, kNumberOfCoordinates, 1> s;
-  std::iota(s.data(), s.data() + kNumberOfCoordinates, 0); // fill with 0...11
+  Eigen::Matrix<int, n, 1> s;
+  std::iota(s.data(), s.data() + n, 0); // fill with 0...11
   // Move independent coordinate to front, dependent coordinate to back,
   // preserving relative order
-  std::stable_partition(s.data(),
-      s.data() + kNumberOfCoordinates,
-      [&](int elem) { return elem != dependent_coordinate_;});
+  std::stable_partition(s.data(), s.data() + n,
+                        [&](int si) { return si != dependent_coordinate_;});
 
-  P_q_ = PermutationMatrix<kNumberOfCoordinates>(s).toDenseMatrix().cast<double>();
+  P_q_ = PermutationMatrix<n>(s).toDenseMatrix().cast<double>();
 }
 
 void Bicycle::update_speed_permutation()
 {
-  Eigen::Matrix<int, kNumberOfSpeeds, 1> s;
-  std::iota(s.data(), s.data() + kNumberOfSpeeds, 0); // fill with 0...11
+  Eigen::Matrix<int, o, 1> s;
+  std::iota(s.data(), s.data() + o, 0); // fill with 0...11
   // Move independent speeds to front, dependent speeds to back, preserving
   // relative order
-  std::stable_partition(s.data(),
-      s.data() + kNumberOfSpeeds,
-      [&](int elem) { return !dependent_speeds_.count(elem); });
+  std::stable_partition(s.data(), s.data() + o,
+                      [&](int si) { return !dependent_speeds_.count(si); });
 
-  P_u_ = PermutationMatrix<kNumberOfSpeeds>(s).toDenseMatrix().cast<double>();
+  P_u_ = PermutationMatrix<o>(s).toDenseMatrix().cast<double>();
 }
 
 void Bicycle::update_permutations()
@@ -134,8 +129,7 @@ RowMajorMatrix Bicycle::all_inputs_except_constraint_forces() const
   return r;
 }
 
-std::ostream & operator<<(std::ostream & os,
-                          const Bicycle & b)
+std::ostream & operator<<(std::ostream & os, const Bicycle & b)
 {
   os << "Rear assembly:" << std::endl
      << b.rear_

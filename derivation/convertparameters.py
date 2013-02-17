@@ -116,7 +116,8 @@ repl, redu = cse(eqns_to_cse, symbols=numbered_symbols("z"))
 
 s  = '#include "bicycle.h"\n'
 s += '#include "whipple.h"\n\n'
-s += 'void Bicycle::set_parameters_from_whipple(const Whipple & w) {\n'
+s += 'namespace bicycle {\n\n'
+s += 'void Bicycle::set_parameters(const Whipple & w)\n{\n'
 s += '  double * z = new double[{0}];\n\n'.format(len(repl))
 for i, r in enumerate(repl):
     s += "  " + re.sub(r'z(\d+)', r'z[\1]', str(r[0])) + " = "
@@ -128,6 +129,7 @@ for i, (ex_i, red_i) in enumerate(zip(expressions, redu)):
     s += re.sub(r'z(\d+)', r'z[\1]', ccode(red_i))
     s += ";\n"
 s += "\n  delete [] z;\n}\n\n"
+s += "} // namespace bicycle\n"
 
 f = open("bicycle_convert_whipple.cc", "w")
 f.write(s)

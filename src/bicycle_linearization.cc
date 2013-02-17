@@ -2,205 +2,213 @@
 
 namespace bicycle {
 
-Matrix<double, 8, 8, RowMajor> Bicycle::M_qq() const
+RowMajorMatrix Bicycle::M_qq() const
 {
   // \nabla_q f_0
-  return Matrix<double, 8, 8>::Identity();
+  // This is true for all conditions of bicycle motion
+  return RowMajorMatrix::Identity(n, n);
 }
 
-Matrix<double, 3, 8, RowMajor> Bicycle::M_uqc() const
+RowMajorMatrix Bicycle::M_uqc() const
 {
   // \nabla_{dq/dt} f_a
-  VectorXd B_dq(108, 1);           // Dynamically allocated
-  f_v_coefficient_dq(B_dq.data()); // Populate the raw data
-  Matrix<double, 3, 8, RowMajor> B_j_dq(Matrix<double, 3, 8, RowMajor>::Zero());
-
-  for (int j = 0; j < kNumberOfSpeeds; ++j) { // column index
-     B_j_dq.block<3, 3>(0, 1) += state_[j + kNumberOfCoordinates] *
-        Map<Matrix<double, 3, 3, RowMajor>,
-            Unaligned,
-            Stride<3*kNumberOfSpeeds, 1> >(&B_dq[3*j]);
-  }
-  return B_j_dq;
+  // This result is true even for du/dt != 0
+  return f_v_dq();
 }
 
-Matrix<double, 3, 12, RowMajor> Bicycle::M_uuc() const
+RowMajorMatrix Bicycle::M_uuc() const
 {
   // \nabla_{du/dt} f_a
-  Matrix<double, 3, 12, RowMajor> B;
-  f_v_coefficient(B.data());
-  return B;
+  // This is true assuming f_a = d/dt (f_v) = d/dt (B(q) * u)
+  // This is true even when du/dt != 0
+  RowMajorMatrix mat(m, o);
+  f_v_coefficient(mat.data());
+  return mat;
 }
 
-Matrix<double, 9, 8, RowMajor> Bicycle::M_uqd() const
+RowMajorMatrix Bicycle::M_uqd() const
 {
   // \nabla_{dq/dt} f_3
-  return Matrix<double, 9, 8, RowMajor>::Zero();
+  // This is true even when du/dt != 0
+  return RowMajorMatrix::Zero(o - m, n);
 }
 
-Matrix<double, 9, 12, RowMajor> Bicycle::M_uud() const
+RowMajorMatrix Bicycle::M_uud() const
 {
   // \nabla_{du/dt} f_2
   // This is the constrained du/dt coefficient matrix from Kane's equations
-  Matrix<double, kNumberOfSpeeds, kNumberOfSpeeds, RowMajor> m;
-  gif_dud(m.data());
-  Matrix<double, 3, 12, RowMajor> md;
-  Matrix<double, 9, 12, RowMajor> mi;
-  for (int i = 0, ii = 0, id = 0; i < kNumberOfSpeeds; ++i) {
-    if (is_dependent_index(i)) {
-      md.block<1, 12>(id++, 0) = m.block<1, 12>(i, 0);
-    } else {
-      mi.block<1, 12>(ii++, 0) = m.block<1, 12>(i, 0);
-    }
-
-  }
-  return mi + Bd_inverse_Bi().transpose() * md;
+  // This is true even when du/dt != 0
+  RowMajorMatrix mat(o, o);
+  gif_dud(mat.data());
+  mat = P_u_.transpose() * mat; // reorder the rows
+  return mat.block<o - m, o>(0, 0)
+       + Bd_inverse_Bi().transpose() * mat.block<m, o>(o - m, 0);
 }
 
-Matrix<double, 8, 8, RowMajor> Bicycle::A_qq() const
+RowMajorMatrix Bicycle::A_qq() const
 {
   // - \nabla_{q} (f_0 + f_1)
   // Since f_0 = I_{8x8} * \dot{q}, only the f_1 term appears in the gradient
-  Matrix<double, 8, 8, RowMajor> m;
-  f_1_dq(m.data());
-  return -m;
+  // This is true even when du/dt != 0
+  RowMajorMatrix mat(n, n);
+  f_1_dq(mat.data());
+  return -mat;
 }
 
-Matrix<double, 8, 12, RowMajor> Bicycle::A_qu() const
+RowMajorMatrix Bicycle::A_qu() const
 {
   // - \nabla_u f_1
-  Matrix<double, 8, 12, RowMajor> m;
-  f_1_du(m.data());
-  return -m;
+  // This is true even when du/dt != 0
+  RowMajorMatrix mat(n, o);
+  f_1_du(mat.data());
+  return -mat;
 }
   
-Matrix<double, 3, 8, RowMajor> Bicycle::A_uqc() const
+RowMajorMatrix Bicycle::A_uqc() const
 {
   // - \nabla_q f_a
-  // TODO:  Rederive without assuming lean rate, pitch rate and steer rate are
-  // zero.
-  // NOTE: This is zero when lean rate, pitch rate, and steer rate are zero.
-  // For non-steady equilibriums, this is not the case.
-  return Matrix<double, 3, 8, RowMajor>::Zero();
+  // TODO:  Rederive without assuming lean rate, pitch rate, steer rate and
+  // du/dt = 0
+  // Assumption:  lean rate, pitch rate, steer rate are zero and du/dt = 0
+  return RowMajorMatrix::Zero(m, n);
 }
 
-Matrix<double, 3, 12, RowMajor> Bicycle::A_uuc() const
+RowMajorMatrix Bicycle::A_uuc() const
 {
-  // TODO: Verify that this returns a matrix of zeros when lean rate, pitch
-  // rate, and steer rate are all zero (steady turn or steady forward cruise)
-  VectorXd B_dq(108, 1);           // Dynamically allocated
+  // - \nabla_u f_a
+  // This is true even when du/dt != 0
+  VectorXd B_dq(m*o*n_min, 1);
   f_v_coefficient_dq(B_dq.data()); // Populate the raw data
-  Matrix<double, 3, 12, RowMajor> B_j_dq(Matrix<double, 3, 12, RowMajor>::Zero());
+  RowMajorMatrix B_j_dq = RowMajorMatrix::Zero(m, o);
+  // lean rate, pitch rate, steer rate
+  // note negative sign!!!
+  Vector3d u_tilde = -state_.block<n_min, 1>(n + 1, 0);
 
-  for (int j = 0; j < kNumberOfSpeeds; ++j) { // column index
-     B_j_dq.block<3, 1>(0, j) = Map<Matrix<double, 3, 3, RowMajor>,
-                                    Unaligned,
-                                    Stride<3*kNumberOfSpeeds, 1> >(&B_dq[3*j])
-                                      * state_.block<3, 1>(kNumberOfCoordinates + 1, 0);
+  // Iterate over each column of B(q)
+  for (int j = 0; j < o; ++j) { // column index
+     B_j_dq.block<m, 1>(0, j) = Map<RowMajorMatrix, Unaligned,
+                  Stride<n_min*o, 1>>(&B_dq[n_min*j], n_min, n_min) * u_tilde;
   }
   return B_j_dq;
    
-  // Below is the result when it is assumed that lean rate, pitch rate, and
-  // steer rate are all zero.
-  // return Matrix<double, 3, 12, RowMajor>::Zero();
+  // Result when lean rate, pitch rate, and steer rate are all zero:
+  // return RowMajorMatrix::Zero(m, o);
 }
 
-Matrix<double, 9, 8, RowMajor> Bicycle::A_uqd() const
+RowMajorMatrix Bicycle::A_uqd() const
 {
   // - \nabla_q (f_2 + f_3)
-  // If we assume du/dt = 0, then -\nabla_q(f_2) = 0
+  // Assume du/dt = 0, then \nabla_q(f_2) = 0
   // TODO: Rederive without assuming du/dt = 0
-  Matrix<double, 9, 8, RowMajor> m = Matrix<double, 9, 8, RowMajor>::Zero();
+  RowMajorMatrix mat(o - m, n);
 
-  Matrix<double, Dynamic, Dynamic, RowMajor> m_gaf_dq(12, 8);
+  // Generalized active forces partial derivatives
+  RowMajorMatrix m_gaf_dq(o, n);
   gaf_dq(m_gaf_dq.data());
-  Matrix<double, Dynamic, Dynamic, RowMajor> m_gif_ud_zero_dq(12, 8);
+  m_gaf_dq = P_u_.transpose() * m_gaf_dq; // reorder rows
+
+  // Generalized inertia forces, coriolis/centripetal
+  RowMajorMatrix m_gif_ud_zero_dq(o, n);
   gif_ud_zero_dq(m_gif_ud_zero_dq.data());
+  m_gif_ud_zero_dq = P_u_.transpose() * m_gif_ud_zero_dq; // reorder rows
 
-  for (int i = 0, id = 0, ii = 0; i < kNumberOfSpeeds; ++i) {
-    if (is_dependent_index(i)) {
-      ++id;
-      continue;
-    } else {
-      m.block<1, 8>(ii, 0) -= (m_gaf_dq.block<1, 8>(i, 0)
-                             + m_gif_ud_zero_dq.block<1, 8>(i, 0));
-      ++ii;
-    }
+  // Constraint coefficient matrix
+  RowMajorMatrix B(m, o);
+  f_v_coefficient(B.data());
+  B = B * P_u_; // reorder columns so dependents speeds are at end.
+  RowMajorMatrix B_i(B.block<m, o - m>(0, 0));
+  // compute decomposition of B_d
+  RowMajorMatrix B_d(B.block<m, m>(0, o - m));
+  FullPivHouseholderQR<RowMajorMatrix> decomposition;
+  decomposition.compute(B_d);
+
+  // Independent portion (Term 1)
+  mat = -(m_gaf_dq.block<o - m, n>(0, 0) + m_gif_ud_zero_dq.block<o - m, n>(0, 0));
+
+  // Dependent portion (Term 2)
+  //
+  // Term 2 a:  \nabla_q[C] * (F_d + F_{dqu}^*)
+  for (int k = 1; k < 4; ++k) {
+    mat.block<o - m, 1>(0, k);
+
   }
+  // Term 2 b:   C * \nabla_q[F_d + F_{dqu}^*]
+  RowMajorMatrix C = decomposition.solve(B_i).transpose();
+  mat.block<o - m, n>(0, 0) -= C*(m_gaf_dq.block<m, n>(o - m, 0) +
+                                  m_gif_ud_zero_dq.block<m, n>(o - m, 0));
 
-  //for (int i = 0; i < 3; ++i) {
-  //  Matrix<double, 3
-  //}
-  return m;
+  return mat;
 }
 
-Matrix<double, 9, 12, RowMajor> Bicycle::A_uud() const
+RowMajorMatrix Bicycle::A_uud() const
 {
   // - \nabla_u (f_3)
-  Matrix<double, 9, 12, RowMajor> m = Matrix<double, 9, 12, RowMajor>::Zero();
+  RowMajorMatrix mat = RowMajorMatrix::Zero(o - m, o);
 
-  return m;
-
+  return mat;
 }
 
-Matrix<double, 20, 20, RowMajor> Bicycle::mass_matrix_full() const
+RowMajorMatrix Bicycle::mass_matrix_full() const
 {
-  Matrix<double, 20, 20, RowMajor> m;
-  m.block<kNumberOfCoordinates, kNumberOfCoordinates>(0, 0) = M_qq();
+  RowMajorMatrix mat(n + o, n + o);
+  mat.block<n, n>(0, 0) = M_qq();
 
-  m.block<kNumberOfCoordinates, kNumberOfSpeeds>(0, kNumberOfCoordinates)
-    = Matrix<double, kNumberOfCoordinates, kNumberOfSpeeds>::Zero();
+  mat.block<n, o>(0, n) = RowMajorMatrix::Zero(n, o);
 
-  m.block<kNumberOfVelocityConstraints, kNumberOfCoordinates>
-      (kNumberOfCoordinates, 0) = M_uqc();
+  mat.block<m, n>(n, 0) = M_uqc();
   
-  m.block<kNumberOfVelocityConstraints, kNumberOfSpeeds>(kNumberOfCoordinates,
-      kNumberOfCoordinates) = M_uuc();
+  mat.block<m, o>(n, n) = M_uuc();
   
-  m.block<kNumberOfSpeeds - kNumberOfVelocityConstraints, kNumberOfCoordinates>
-      (kNumberOfCoordinates + kNumberOfVelocityConstraints, 0) = M_uqd();
+  mat.block<o - m, n>(n + m, 0) = M_uqd();
   
-  m.block<kNumberOfSpeeds - kNumberOfVelocityConstraints, kNumberOfSpeeds>
-    (kNumberOfCoordinates + kNumberOfVelocityConstraints, kNumberOfCoordinates) = M_uud();
-  return m;
+  mat.block<o - m, o>(n + m, n) = M_uud();
+  return mat;
 }
 
-Matrix<double, 20, 16, RowMajor> Bicycle::independent_state_matrix() const
+RowMajorMatrix Bicycle::independent_state_matrix() const
 {
-  Matrix<double, 20, 16, RowMajor> m;
+  RowMajorMatrix mat(n + o, n + o - l - m);
   
-  m.block<8, 8>(0, 0) = A_qq();
+  mat.block<8, 8>(0, 0) = A_qq() * C_0();
 
-  return m;
+  return mat;
 }
   
 RowMajorMatrix Bicycle::C_0() const
 {
-  RowMajorMatrix fcdq(1, 8);
+  RowMajorMatrix fcdq(l, n);
   f_c_dq(fcdq.data());
 
-  return RowMajorMatrix::Identity(8, 8)
-    - ((P_qd() / (fcdq * P_qd())(0, 0)) * fcdq);
+  return RowMajorMatrix::Identity(8, 8) - ((P_qd() / (fcdq * P_qd())(0, 0)) * fcdq);
+}
+
+RowMajorMatrix Bicycle::C_1() const
+{
+  RowMajorMatrix B(m, o);
+  f_v_coefficient(B.data());
+  B = B * P_u_;
+  FullPivHouseholderQR<RowMajorMatrix> decomposition;
+  decomposition.compute(B.block<m, m>(0, o - m));
+
+  // Constraint coefficient matrix partials w.r.t. q
+  //RowMajorMatrix 
+
 }
 
 RowMajorMatrix Bicycle::P_qd() const {
-  return P_q_.block<kNumberOfCoordinates, kNumberOfConfigurationConstraints>
-                (0, kNumberOfCoordinates - kNumberOfConfigurationConstraints);
+  return P_q_.block<n, l>(0, n - l);
 }
 
 RowMajorMatrix Bicycle::P_qi() const {
-  return P_q_.block<kNumberOfCoordinates,
-         kNumberOfCoordinates - kNumberOfConfigurationConstraints>(0, 0);
+  return P_q_.block<n, n - l>(0, 0);
 }
 
 RowMajorMatrix Bicycle::P_ud() const {
-  return P_u_.block<kNumberOfSpeeds, kNumberOfVelocityConstraints>
-                (0, kNumberOfSpeeds - kNumberOfVelocityConstraints);
+  return P_u_.block<o, m>(0, o - m);
 }
 
 RowMajorMatrix Bicycle::P_ui() const {
-  return P_u_.block<kNumberOfSpeeds,
-         kNumberOfSpeeds - kNumberOfVelocityConstraints>(0, 0);
+  return P_u_.block<o, o - m>(0, 0);
 }
 
 } // namespace bicycle

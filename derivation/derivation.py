@@ -116,6 +116,7 @@ def derivation():
     # [Meijaard2007]: http://dx.doi.org/10.1098/rspa.2007.1857
 
     q = dynamicsymbols('q:8')
+    q_min = [q[1], q[2], q[3]]  # lean, pitch, steer
     qd = [qi.diff(t) for qi in q]
 
     # ### Generalized speeds
@@ -274,7 +275,6 @@ def derivation():
     f_1_du = np.zeros((8, 12), dtype=object)
     for i, qdi in enumerate(qd[:6]):
         f_1[i] = -u[i]
-        # f_1_dq[:6, :8] = 0_{6x8}
         f_1_du[i, i] = S(-1)
 
     v_gc_rw = gc_r.pos_from(wc_r).diff(t, L).subs(qd_u_dict) + (L.ang_vel_in(RW) ^ gc_r.pos_from(wc_r))
@@ -315,9 +315,9 @@ def derivation():
         f_v[i] = f_v_vec & uv
         for j, uj in enumerate(u):
             B[i, j] = f_v[i].diff(uj)
-            for k, qk in enumerate(q[1:3]):
+            for k, qk in enumerate(q_min):
                 B_dq[i, j, k] = B[i, j].diff(qk)
-                for l, ql in enumerate(q[1:3]):
+                for l, ql in enumerate(q_min):
                     B_hess[i, j, k, l] = B_dq[i, j, k].diff(ql)
 
     print("Forming rear assembly partial angular velocities...")
@@ -371,17 +371,19 @@ def derivation():
     alpha_f_n = F.ang_acc_in(N)
     alpha_rw_r = RW.ang_acc_in(R)
     alpha_fw_f = FW.ang_acc_in(F)
+    # Partial derivatives w.r.t. are only taken with respect to q[1], q[2],
+    # q[3], the lean, pitch and steer angles, since the others do not appear in
+    # any of the dynamics
     gaf = np.zeros((len(u),), dtype=object)
-    gaf_dqdr = np.zeros((len(u), len(q) + len(r)), dtype=object)
-    gaf_dq = np.zeros((len(u), len(q)), dtype=object)
+    gaf_dq = np.zeros((len(u), len(q_min)), dtype=object)
     gaf_dr = np.zeros((len(u), len(r)), dtype=object)
     gif = np.zeros((len(u),), dtype=object)
     gif_ud_zero = np.zeros((len(u),), dtype=object)
     gif_ud_zero_steady = np.zeros((len(u),), dtype=object)
     gif_dud = np.zeros((len(u), len(u)), dtype=object)
-    gif_ud_zero_dq = np.zeros((len(u), len(q)), dtype=object)
+    gif_dud_dq = np.zeros((len(u), len(u), len(q_min)), dtype=object)
+    gif_ud_zero_dq = np.zeros((len(u), len(q_min)), dtype=object)
     gif_ud_zero_du = np.zeros((len(u), len(u)), dtype=object)
-    gif_ud_zero_dqdu = np.zeros((len(u), len(q) + len(u)), dtype=object)
 
     for i in range(len(u)):
         # Generalized active forces
@@ -408,20 +410,23 @@ def derivation():
         gif_ud_zero[i] = gif[i].subs(ud_zero_dict)
         gif_ud_zero_steady[i] = gif_ud_zero[i].subs(steady_no_slip)
 
-        # Partial derivatives w.r.t q
-        for j, qj in enumerate(q):
-            gaf_dq[i, j] = gaf_dqdr[i, j] = gaf[i].diff(qj)
-            gif_ud_zero_dq[i, j] = gif_ud_zero_dqdu[i, j] = gif_ud_zero[i].diff(qj)
+        # Partial derivatives w.r.t. q
+        for j, qj in enumerate(q_min):
+            gaf_dq[i, j] = gaf[i].diff(qj)
+            gif_ud_zero_dq[i, j] = gif_ud_zero[i].diff(qj)
 
         # Input coefficient matrix
         for j, rj in enumerate(r):
-            gaf_dr[i, j] = gaf_dqdr[i, j + len(q)] = gaf[i].diff(rj)
-
+            gaf_dr[i, j] = gaf[i].diff(rj)
 
         # Mass matrix and partial derivatives w.r.t u
         for j, (uj, udj) in enumerate(zip(u, ud)):
-            gif_ud_zero_du[i, j] = gif_ud_zero_dqdu[i, j + len(q)] = gif_ud_zero[i].diff(uj)
+            gif_ud_zero_du[i, j] = gif_ud_zero[i].diff(uj)
             gif_dud[i, j] = gif[i].diff(udj)
+            # Partial derivatives of mass matrix w.r.t. q, needed for
+            # linearization when du/dt != 0
+            for k, qk in enumerate(q_min):
+                gif_dud_dq[i, j, k] = gif_dud[i, j].diff(qk)
 
     # Output code generation
     code = NumpyArrayOutput(['<cmath>', '"bicycle.h"'], namespaces=['std'])
@@ -459,23 +464,23 @@ def derivation():
 
     print("Generating mass matrix (gif_dud) code...")
     code.generate(gif_dud, "Bicycle::gif_dud")
+    print("Generating mass matrix partial derivative (gif_dud_dq) code...")
+    code.generate(gif_dud_dq, "Bicycle::gif_dud_dq")
     print("Generating coriolis/centripetal (gif_ud_zero) code...")
     code.generate(gif_ud_zero, "Bicycle::gif_ud_zero")
     print("Generating steady coriolis/centripetal (gif_ud_zero_steady) code...")
     code.generate(gif_ud_zero_steady, "Bicycle::gif_ud_zero_steady")
     print("Generating partial derivatives of coriolis/centripetal " +
-          "(gif_ud_zero_dq, gif_ud_zero_du, gif_ud_zero_dqdu) code...")
+          "(gif_ud_zero_dq, gif_ud_zero_du) code...")
     code.generate(gif_ud_zero_dq, "Bicycle::gif_ud_zero_dq")
     code.generate(gif_ud_zero_du, "Bicycle::gif_ud_zero_du")
-    code.generate(gif_ud_zero_dqdu, "Bicycle::gif_ud_zero_dqdu")
 
     print("Generating generalized active forces (gaf) code...")
     code.generate(gaf, "Bicycle::gaf")
     print("Generating generalized active forces partial derivative matrices " +
-          "(gaf_dq, gaf_dr, gaf_dqdr) code...")
+          "(gaf_dq, gaf_dr) code...")
     code.generate(gaf_dq, "Bicycle::gaf_dq")
     code.generate(gaf_dr, "Bicycle::gaf_dr")
-    code.generate(gaf_dqdr, "Bicycle::gaf_dqdr")
 
     code.output("bicycle_generated.cc")
 

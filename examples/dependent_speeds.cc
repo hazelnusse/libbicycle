@@ -8,7 +8,7 @@ using namespace bicycle;
 int main() {
   Bicycle b;      // Initial state is zero, all parameters zero, 9.81 gravity
   Whipple w;      // Benchmark Whipple parameter values
-  b.set_parameters_from_whipple(w);  // set Whipple parameters
+  b.set_parameters(w);  // set Whipple parameters
   // default dependent coordinate is pitch angle
   b.solve_configuration_constraint_and_set_state();
   Bicycle::state x(Bicycle::state::Zero());
