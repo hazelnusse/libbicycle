@@ -249,7 +249,7 @@ class Bicycle {
    * - \f$G_{Fx}\f$
    * - \f$G_{Fy}\f$
    * - \f$G_{Fz}\f$
-   *   \f$\tau_s\f$
+   * - \f$\tau_s\f$
    *
    * The first six components of this matrix are with respect to the rear and
    * front wheel yaw frames, respectively. x is parallel to the intersection
