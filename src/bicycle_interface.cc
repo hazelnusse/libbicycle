@@ -10,6 +10,7 @@ namespace bicycle {
 // the header.  Weird linker errors can (and have occured if they are declared
 // but not defined.
 const int Bicycle::n;
+const int Bicycle::n_min;
 const int Bicycle::l;
 const int Bicycle::o;
 const int Bicycle::m;
@@ -80,7 +81,7 @@ void Bicycle::set_dependent_speeds(const std::set<int> & speed_indices)
 
 void Bicycle::update_coordinate_permutation()
 {
-  Eigen::Matrix<int, n, 1> s;
+  ::Eigen::Matrix<int, n, 1> s;
   std::iota(s.data(), s.data() + n, 0); // fill with 0...11
   // Move independent coordinate to front, dependent coordinate to back,
   // preserving relative order
@@ -92,7 +93,7 @@ void Bicycle::update_coordinate_permutation()
 
 void Bicycle::update_speed_permutation()
 {
-  Eigen::Matrix<int, o, 1> s;
+  ::Eigen::Matrix<int, o, 1> s;
   std::iota(s.data(), s.data() + o, 0); // fill with 0...11
   // Move independent speeds to front, dependent speeds to back, preserving
   // relative order
@@ -108,24 +109,24 @@ void Bicycle::update_permutations()
   update_speed_permutation();
 }
 
-RowMajorMatrix Bicycle::all_inputs_except_constraint_forces() const
+Matrix Bicycle::all_inputs_except_constraint_forces() const
 {
-  RowMajorMatrix r(15, 1);
-  r(0, 0) = rear_.Tw;
-  r(1, 0) = rear_.Tx;
-  r(2, 0) = rear_.Ty;
-  r(3, 0) = rear_.Tz;
-  r(4, 0) = rear_.Fx;
-  r(5, 0) = rear_.Fy;
-  r(6, 0) = rear_.Fz;
-  r(7, 0) = front_.Tw;
-  r(8, 0) = front_.Tx;
-  r(9, 0) = front_.Ty;
-  r(10, 0) = front_.Tz;
-  r(11, 0) = front_.Fx;
-  r(12, 0) = front_.Fy;
-  r(13, 0) = front_.Fz;
-  r(14, 0) = g_;
+  Vector r(15);
+  r[0] = rear_.Tw;
+  r[1] = rear_.Tx;
+  r[2] = rear_.Ty;
+  r[3] = rear_.Tz;
+  r[4] = rear_.Fx;
+  r[5] = rear_.Fy;
+  r[6] = rear_.Fz;
+  r[7] = front_.Tw;
+  r[8] = front_.Tx;
+  r[9] = front_.Ty;
+  r[10] = front_.Tz;
+  r[11] = front_.Fx;
+  r[12] = front_.Fy;
+  r[13] = front_.Fz;
+  r[14] = g_;
   return r;
 }
 

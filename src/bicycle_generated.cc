@@ -528,8 +528,8 @@ void Bicycle::f_c_dq(double ar[8]) const
  *
  * @param[out] a C-array of with 36 elements
  */
-//  void Bicycle::f_v_coefficient(double ar[36]) const;
-void Bicycle::f_v_coefficient(double ar[36]) const
+//  void Bicycle::f_v_du(double ar[36]) const;
+void Bicycle::f_v_du(double ar[36]) const
 {
   double * z = new double[38];
 
@@ -616,8 +616,8 @@ void Bicycle::f_v_coefficient(double ar[36]) const
  *
  * @param[out] a C-array of with 108 elements
  */
-//  void Bicycle::f_v_coefficient_dq(double ar[108]) const;
-void Bicycle::f_v_coefficient_dq(double ar[108]) const
+//  void Bicycle::f_v_dudq(double ar[108]) const;
+void Bicycle::f_v_dudq(double ar[108]) const
 {
   double * z = new double[103];
 
@@ -841,8 +841,8 @@ void Bicycle::f_v_coefficient_dq(double ar[108]) const
  *
  * @param[out] a C-array of with 324 elements
  */
-//  void Bicycle::f_v_coefficient_dqdq(double ar[324]) const;
-void Bicycle::f_v_coefficient_dqdq(double ar[324]) const
+//  void Bicycle::f_v_dudqdq(double ar[324]) const;
+void Bicycle::f_v_dudqdq(double ar[324]) const
 {
   double * z = new double[328];
 

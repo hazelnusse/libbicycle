@@ -8,12 +8,17 @@
 
 namespace bicycle {
 
+using ::Eigen::ComputeThinV;
+using ::Eigen::FullPivHouseholderQR;
+using ::Eigen::JacobiSVD;
+using ::Eigen::Map;
+using ::Eigen::PermutationMatrix;
+using ::Eigen::Stride;
+using ::Eigen::Unaligned;
+
 typedef double Real;
 typedef Eigen::Matrix<Real, Eigen::Dynamic, 1> Vector;
-typedef Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> RowMajorMatrix;
-typedef Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor> ColMajorMatrix;
-//typedef RowMajorMatrix Matrix;
-using namespace Eigen;
+typedef Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> Matrix;
 
 /** A class representing a dynamic model of a bicycle.
  *
@@ -258,7 +263,7 @@ class Bicycle {
    * downwards (to the half space opposite that which the bicycle is normally
    * in).
    * */
-  RowMajorMatrix steady_constraint_forces() const;
+  Matrix steady_constraint_forces() const;
 
   /** Solve configuration constraint.
    *
@@ -322,13 +327,13 @@ class Bicycle {
    *
    * \returns a 20 x 20 coefficient matrix of dq/dt and du/dt
    */
-  RowMajorMatrix mass_matrix_full() const;
+  Matrix mass_matrix_full() const;
 
   /** Form linearized state matrix
    *
    * \returns a 20 x 16 coefficient matrix
    */
-  RowMajorMatrix independent_state_matrix() const;
+  Matrix independent_state_matrix() const;
 
   // This is to ensure state has 128-bit alignment and hence vectorizable
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -343,10 +348,10 @@ class Bicycle {
   void mc_f_ogl(double ar[16]) const;
   void N_ogl(double ar[16]) const;
   void f_c(double ar[1]) const;
-  void f_c_dq(double ar[8]) const;
-  void f_v_coefficient(double ar[m * o]) const;
-  void f_v_coefficient_dq(double ar[m * o * n_min]) const;
-  void f_v_coefficient_dqdq(double ar[m * o * n_min * n_min]) const;
+  void f_c_dq(double ar[n]) const;
+  void f_v_du(double ar[m * o]) const;
+  void f_v_dudq(double ar[m * o * n_min]) const;
+  void f_v_dudqdq(double ar[m * o * n_min * n_min]) const;
   void kinematic_odes_rhs(double ar[n]) const;
   void f_1(double ar[n]) const;
   void f_1_dq(double ar[n * n]) const;
@@ -355,43 +360,44 @@ class Bicycle {
   void gif_dud_dq(double ar[o * o * n_min]) const;
   void gif_ud_zero(double ar[o]) const;
   void gif_ud_zero_steady(double ar[o]) const;
-  void gif_ud_zero_dq(double ar[o * n]) const;
+  void gif_ud_zero_dq(double ar[o * n_min]) const;
   void gif_ud_zero_du(double ar[o * o]) const;
   void gaf(double ar[o]) const;
-  void gaf_dq(double ar[o * n]) const;
+  void gaf_dq(double ar[o * n_min]) const;
   void gaf_dr(double ar[o * s]) const;
 
   // Private member functions related to linearization of dynamic equations
-  RowMajorMatrix Bd_inverse_Bi() const;
-  RowMajorMatrix f_v_dq() const;
-  RowMajorMatrix M_qq() const;
-  RowMajorMatrix M_uqc() const;
-  RowMajorMatrix M_uuc() const;
-  RowMajorMatrix M_uqd() const;
-  RowMajorMatrix M_uud() const;
-  RowMajorMatrix A_qq() const;
-  RowMajorMatrix A_qu() const;
-  RowMajorMatrix A_uqc() const;
-  RowMajorMatrix A_uuc() const;
-  RowMajorMatrix A_uqd() const;
-  RowMajorMatrix A_uud() const;
+  Matrix Bd_inverse_Bi() const;
+  Matrix f_v_dq() const;
+  Matrix M_qq() const;
+  Matrix M_uqc() const;
+  Matrix M_uuc() const;
+  Matrix M_uqd() const;
+  Matrix M_uud() const;
+  Matrix A_qq() const;
+  Matrix A_qu() const;
+  Matrix A_uqc() const;
+  Matrix A_uuc() const;
+  Matrix A_uqd() const;
+  Matrix A_uud() const;
+  Matrix B_u() const;
 
-  RowMajorMatrix C_0() const;
-  RowMajorMatrix C_1() const;
-  RowMajorMatrix C_2() const;
+  Matrix C_0() const;
+  Matrix C_1() const;
+  Matrix C_2() const;
 
-  RowMajorMatrix P_qd() const;
-  RowMajorMatrix P_qi() const;
+  Matrix P_qd() const;
+  Matrix P_qi() const;
 
-  RowMajorMatrix P_ud() const;
-  RowMajorMatrix P_ui() const;
+  Matrix P_ud() const;
+  Matrix P_ui() const;
 
   // Private members used for convenience
   bool is_dependent_index(int i) const;
   void update_coordinate_permutation();
   void update_speed_permutation();
   void update_permutations();
-  RowMajorMatrix all_inputs_except_constraint_forces() const;
+  Matrix all_inputs_except_constraint_forces() const;
   int best_dependent_coordinate() const;
   std::set<int> best_dependent_speeds() const;
 
@@ -402,7 +408,7 @@ class Bicycle {
 
   int dependent_coordinate_;
   std::set<int> dependent_speeds_;
-  RowMajorMatrix P_q_, P_u_;           // Permutation matrices
+  Matrix P_q_, P_u_;           // Permutation matrices
   // Camera related variables
   double azimuth, elevation, twist, cam_x, cam_y, cam_z;
 };
