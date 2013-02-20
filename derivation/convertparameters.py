@@ -53,10 +53,8 @@ FO = P.locatenew('FO', w*N.x - (rF + tF)*N.z)   # Front wheel center
 Q = P.locatenew('Q', w*N.x)
 
 # Mass centers of rear and front assembly relative to respective wheel centers
-RO_BO_mc = RO.locatenew('RO_BO_mc', (mR*RO.pos_from(RO) +
-    mB*BO.pos_from(RO)).express(R)/(mR + mB))
-FO_HO_mc = FO.locatenew('FO_HO_mc', (mF*FO.pos_from(FO) +
-    mH*HO.pos_from(FO)).express(R)/(mF + mH))
+RO_BO_mc = RO.locatenew('RO_BO_mc', (mB*BO.pos_from(RO))/(mR + mB))
+FO_HO_mc = FO.locatenew('FO_HO_mc', (mH*HO.pos_from(FO))/(mF + mH))
 
 # Inertia dyads of bodies in Meijaard et al. 2007
 IR_RO = inertia(R, IRxx, IRyy, IRxx)
@@ -64,40 +62,41 @@ IB_BO = inertia(N, IBxx, IByy, IBzz, 0, 0, IBxz)
 IH_HO = inertia(N, IHxx, IHyy, IHzz, 0, 0, IHxz)
 IF_FO = inertia(R, IFxx, IFyy, IFxx)
 
-IB_BO = (R.x & IB_BO & R.x).expand()*(R.x|R.x) +\
-        (R.y & IB_BO & R.y).expand()*(R.y|R.y) +\
-        (R.z & IB_BO & R.z).expand()*(R.z|R.z) +\
-        (R.x & IB_BO & R.z).expand()*(R.x|R.z) +\
-        (R.z & IB_BO & R.x).expand()*(R.z|R.x)
-IH_HO = (R.x & IH_HO & R.x).expand()*(R.x|R.x) +\
-        (R.y & IH_HO & R.y).expand()*(R.y|R.y) +\
-        (R.z & IH_HO & R.z).expand()*(R.z|R.z) +\
-        (R.x & IH_HO & R.z).expand()*(R.x|R.z) +\
-        (R.z & IH_HO & R.x).expand()*(R.z|R.x)
+# Inertia of Body B, expressed in R coordinates
+IB_BO = (R.x & IB_BO & R.x)*(R.x|R.x) +\
+        (R.y & IB_BO & R.y)*(R.y|R.y) +\
+        (R.z & IB_BO & R.z)*(R.z|R.z) +\
+        (R.x & IB_BO & R.z)*(R.x|R.z) +\
+        (R.z & IB_BO & R.x)*(R.z|R.x)
+
+IH_HO = (R.x & IH_HO & R.x)*(R.x|R.x) +\
+        (R.y & IH_HO & R.y)*(R.y|R.y) +\
+        (R.z & IH_HO & R.z)*(R.z|R.z) +\
+        (R.x & IH_HO & R.z)*(R.x|R.z) +\
+        (R.z & IH_HO & R.x)*(R.z|R.x)
 
 # Inertia of rear and front assemblies, expressed in R frame (same as F frame when
 # steer is zero, as is the case in reference configuration)
 IRear = IR_RO + IB_BO +\
-        inertia_of_point_mass(mR, RO.pos_from(RO_BO_mc), R) +\
-        inertia_of_point_mass(mB, BO.pos_from(RO_BO_mc), R)
+        inertia_of_point_mass(mR, RO.pos_from(RO_BO_mc).express(R), R) +\
+        inertia_of_point_mass(mB, BO.pos_from(RO_BO_mc).express(R), R)
 
 IFront = IF_FO + IH_HO +\
-         inertia_of_point_mass(mF, FO.pos_from(FO_HO_mc), R) +\
-         inertia_of_point_mass(mH, HO.pos_from(FO_HO_mc), R)
-
+         inertia_of_point_mass(mF, FO.pos_from(FO_HO_mc).express(R), R) +\
+         inertia_of_point_mass(mH, HO.pos_from(FO_HO_mc).express(R), R)
 
 expressions = [
     ("rear_.Ixx", R.x & IRear & R.x),
     ("rear_.Iyy", R.y & IRear & R.y),
     ("rear_.Izz", R.z & IRear & R.z),
     ("rear_.Ixz", R.x & IRear & R.z),
-    ("rear_.J", IRyy), 
+    ("rear_.J", IRyy),
     ("rear_.m", mR + mB),
     ("rear_.R", rR),
     ("rear_.r", tR),
     ("rear_.a", RO_BO_mc.pos_from(RO) & R.x),
     ("rear_.b", RO_BO_mc.pos_from(RO) & R.z),
-    ("rear_.c", (w + c)*cos(l) - (rR + tR)*sin(l)), # manual calculation
+    ("rear_.c", ((w + c)*N.x + ((rR + tR)*N.z & R.x)*R.x) & R.x),
     ("front_.Ixx", R.x & IFront & R.x),
     ("front_.Iyy", R.y & IFront & R.y),
     ("front_.Izz", R.z & IFront & R.z),
@@ -108,8 +107,8 @@ expressions = [
     ("front_.r", tF),
     ("front_.a", FO_HO_mc.pos_from(FO) & R.x),
     ("front_.b", FO_HO_mc.pos_from(FO) & R.z),
-    ("front_.c", c*cos(l) - (rF + tF)*sin(l)), # manual calculation
-    ("ls_", w*sin(l) + (rR + tR - rF - tF)*cos(l))]
+    ("front_.c", (c*N.x + (rF + tF)*N.z) & R.x),
+    ("ls_", ((rR + tR)*N.z + w * N.x - (rF + tF)*N.z) & R.z)]
 
 eqns_to_cse = [rhs for lhs, rhs in expressions]
 repl, redu = cse(eqns_to_cse, symbols=numbered_symbols("z"))

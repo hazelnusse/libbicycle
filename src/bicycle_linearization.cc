@@ -77,17 +77,18 @@ Matrix Bicycle::A_uuc() const
 {
   // - \nabla_u f_a
   // This is true even when du/dt != 0
-  Vector B_dq(m * o * n_min, 1);
-  f_v_dudq(B_dq.data()); // Populate the raw data
+  Vector B_dq_ar(m * o * n_min);
+  f_v_dudq(B_dq_ar.data()); // Populate the raw data
   Matrix B_j_dq = Matrix::Zero(m, o);
   // lean rate, pitch rate, steer rate
   // note negative sign!!!
   ::Eigen::Vector3d u_tilde = -state_.block<n_min, 1>(n + 1, 0);
 
   // Iterate over each column of B(q)
+  // Multiply each 3 x 3 matrix by u_tilde
   for (int j = 0; j < o; ++j) { // column index
-     B_j_dq.block<m, 1>(0, j) = Map<Matrix, Unaligned,
-                  Stride<n_min*o, 1>>(&B_dq[n_min*j], n_min, n_min) * u_tilde;
+     B_j_dq.block<m, 1>(0, j) = Map<Matrix, Unaligned, Stride<n_min*o, 1>>
+       (&(B_dq_ar[j*n_min]), n_min, n_min) * u_tilde;
   }
   return B_j_dq;
 }
@@ -127,6 +128,11 @@ Matrix Bicycle::A_uqd() const
   Matrix B_d(B.block<m, m>(0, o - m)); // dependent columns of B
   FullPivHouseholderQR<Matrix> decomposition;  // QR decomposition so we can
   decomposition.compute(B_d);                  // solve B_d * x = rhs for x
+  Matrix C = decomposition.solve(B_i).transpose();
+
+  // Constraint coefficient matrix, partial derivatives
+  Vector B_dq_ar(m * o * n_min);   // stored as a (m, o, n_min) C style array
+  f_v_dudq(B_dq_ar.data());
 
   // Independent portion (Term 1)
   mat.block<o - m, n_min>(0, 1) = -(gaf_dq_mat.block<o - m, n_min>(0, 0)
@@ -135,15 +141,25 @@ Matrix Bicycle::A_uqd() const
   // Dependent portion (Term 2)
   //
   // Term 2 a:  \nabla_q[C] * (F_d + F_{dqu}^*)
-  //for (int k = 1; k < 4; ++k) {
- //   mat.block<o - m, 1>(0, k);
-//
- // }
-  // Term 2 b:   C * \nabla_q[F_d + F_{dqu}^*]
-  //Matrix C = decomposition.solve(B_i).transpose();
-  //mat.block<o - m, n>(0, 0) -= C*(m_gaf_dq.block<m, n>(o - m, 0) +
-  //                                m_gif_ud_zero_dq.block<m, n>(o - m, 0));
-//
+  // Term 2 b:   (B_d^{-1} * B_i)^T * \nabla_q[F_d + F_{dqu}^*]
+  for (int k = 0; k < 3; ++k) {   // q[k + 1] = q[1], q[2], q[3]
+    // Map<Matrix, Unaligned, Stride<n_min*o, n_min>> B_dq_k_map(&B_dq_ar[k], m, o);
+    Matrix B_dq_k = Map<Matrix, Unaligned,
+                        Stride<n_min*o, n_min>>(&B_dq_ar[k], m, o) * P_u_;
+
+    // Term 2 a:
+    mat.block<o - m, 1>(0, k + 1) -=
+       (decomposition.solve(B_dq_k.block<m, o - m>(0, 0)).transpose()
+      - B_i.transpose() *
+          (B_d.transpose() * B_dq_k.block<m, m>(0, o - m) * B_d.transpose()))
+      * (gaf_vec.block<m, 1>(o - m, 0) + gif_ud_zero_vec.block<m, 1>(o - m, 0));
+
+    // Term 2 b:
+    mat.block<o - m, 1>(0, k + 1) -= 
+      C * (gaf_dq_mat.block<m, 1>(o - m, k)
+         + gif_ud_zero_dq_mat.block<m, 1>(o - m, k));
+
+  }
   return mat;
 }
 
@@ -196,15 +212,28 @@ Matrix Bicycle::independent_state_matrix() const
 
   mat.block<n, o - m>(0, n - l) = A_qu() * C_2();
 
-  mat.block<m, n - l>(n - l, 0) = (A_uqc() + A_uuc()*C_1()) * C_0();
+  mat.block<m, n - l>(n, 0) = (A_uqc() + A_uuc() * C_1()) * C_0();
   
-  mat.block<m, o - m>(n - l, n - l) = A_uuc() * C_2();
+  mat.block<m, o - m>(n, n - l) = A_uuc() * C_2();
 
   mat.block<o - m, n - l>(n + m, 0) = (A_uqd() + A_uud() * C_1()) * C_0();
 
   mat.block<o - m, o - m>(n + m, n - l) = A_uud() * C_2();
 
   return mat;
+}
+
+Matrix Bicycle::system_dynamics_matrix() const
+{
+  Matrix M_full = mass_matrix_full();
+  Matrix A_full = independent_state_matrix();
+  FullPivHouseholderQR<Matrix> dec;
+  dec.compute(M_full);
+  Matrix A = dec.solve(A_full);
+  Matrix P_prime_transpose = Matrix::Zero(n - l + o - m, o + n);
+  P_prime_transpose.block<n - l, n>(0, 0) = P_qi().transpose();
+  P_prime_transpose.block<o - m, o>(n - l, n) = P_ui().transpose();
+  return P_prime_transpose * A;
 }
   
 Matrix Bicycle::C_0() const
@@ -214,7 +243,7 @@ Matrix Bicycle::C_0() const
   Matrix fcdq(l, n);
   f_c_dq(fcdq.data());
 
-  return (Matrix::Identity(8, 8)
+  return (Matrix::Identity(n, n)
          - ((P_qd() / (fcdq * P_qd())(0, 0)) * fcdq)) * P_qi();
 }
 

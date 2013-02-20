@@ -17,27 +17,72 @@ const int Bicycle::m;
 const int Bicycle::s;
 
 Bicycle::Bicycle()
-  : state_(state::Zero()), ls_(0.0), g_(9.81), steer_torque_(0.0),
-    dependent_coordinate_(2), dependent_speeds_{0, 2, 5},
-    azimuth(0.0), elevation(0.0), twist(0.0),
-    cam_x(0.0), cam_y(0.0), cam_z(0.0)
+  : state_(Eigen::Matrix<double, n + o, 1>::Zero()), ls_(0.0), g_(9.81),
+  steer_torque_(0.0), dependent_coordinate_(2), dependent_speeds_{0, 2, 5},
+  azimuth(0.0), elevation(0.0), twist(0.0), cam_x(0.0), cam_y(0.0), cam_z(0.0)
 {
   update_permutations();
 }
 
-void Bicycle::set_state(const state & x)
+void Bicycle::set_state(const Vector & x)
 {
   state_ = x;
 }
 
-void Bicycle::set_coordinates(const coordinates & q)
+void Bicycle::set_coordinates(const Vector & q)
 {
-  state_.block<8, 1>(0, 0) = q;
+  state_.block<n, 1>(0, 0) = q;
 }
 
-void Bicycle::set_speeds(const speeds & u)
+Vector Bicycle::coordinates() const
 {
-  state_.block<12, 1>(8, 0) = u;
+  return state_.block<n, 1>(0, 0);
+}
+
+double Bicycle::coordinate(int i) const
+{
+  return state_[i];
+}
+
+void Bicycle::set_speeds(const Vector & u)
+{
+  state_.block<o, 1>(n, 0) = u;
+}
+
+Vector Bicycle::speeds() const
+{
+  return state_.block<o, 1>(n, 0);
+}
+
+double Bicycle::speed(int i) const
+{
+  return state_[n + i];
+}
+
+void Bicycle::set_inputs(const Vector & r)
+{
+  rear_.Tw = r[0];
+  rear_.Tx = r[1];
+  rear_.Ty = r[2];
+  rear_.Tz = r[3];
+  rear_.Gx = r[4];
+  rear_.Gy = r[5];
+  rear_.Gz = r[6];
+  rear_.Fx = r[7];
+  rear_.Fy = r[8];
+  rear_.Fz = r[9];
+  front_.Tw = r[10];
+  front_.Tx = r[11];
+  front_.Ty = r[12];
+  front_.Tz = r[13];
+  front_.Gx = r[14];
+  front_.Gy = r[15];
+  front_.Gz = r[16];
+  front_.Fx = r[17];
+  front_.Fy = r[18];
+  front_.Fz = r[19];
+  steer_torque_ = r[20];
+  g_ = r[21];
 }
   
 void Bicycle::set_parameters(const WheelAssemblyGyrostat & rear,
@@ -81,26 +126,26 @@ void Bicycle::set_dependent_speeds(const std::set<int> & speed_indices)
 
 void Bicycle::update_coordinate_permutation()
 {
-  ::Eigen::Matrix<int, n, 1> s;
-  std::iota(s.data(), s.data() + n, 0); // fill with 0...11
+  ::Eigen::Matrix<int, n, 1> indices;
+  std::iota(indices.data(), indices.data() + n, 0); // fill with 0...7
   // Move independent coordinate to front, dependent coordinate to back,
   // preserving relative order
-  std::stable_partition(s.data(), s.data() + n,
+  std::stable_partition(indices.data(), indices.data() + n,
                         [&](int si) { return si != dependent_coordinate_;});
 
-  P_q_ = PermutationMatrix<n>(s).toDenseMatrix().cast<double>();
+  P_q_ = PermutationMatrix<n>(indices).toDenseMatrix().cast<double>();
 }
 
 void Bicycle::update_speed_permutation()
 {
-  ::Eigen::Matrix<int, o, 1> s;
-  std::iota(s.data(), s.data() + o, 0); // fill with 0...11
+  ::Eigen::Matrix<int, o, 1> indices;
+  std::iota(indices.data(), indices.data() + o, 0); // fill with 0...11
   // Move independent speeds to front, dependent speeds to back, preserving
   // relative order
-  std::stable_partition(s.data(), s.data() + o,
+  std::stable_partition(indices.data(), indices.data() + o,
                       [&](int si) { return !dependent_speeds_.count(si); });
 
-  P_u_ = PermutationMatrix<o>(s).toDenseMatrix().cast<double>();
+  P_u_ = PermutationMatrix<o>(indices).toDenseMatrix().cast<double>();
 }
 
 void Bicycle::update_permutations()
@@ -109,7 +154,7 @@ void Bicycle::update_permutations()
   update_speed_permutation();
 }
 
-Matrix Bicycle::all_inputs_except_constraint_forces() const
+Vector Bicycle::all_inputs_except_constraint_forces() const
 {
   Vector r(15);
   r[0] = rear_.Tw;

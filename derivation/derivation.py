@@ -15,12 +15,15 @@
 # tire contact force model can be added.  In the former case, the model has 3
 # degrees of freedom; in the latter case, it has 7 degrees of freedom.
 
-from sympy import symbols, zeros, pi, S
+from sympy import symbols, zeros, pi, S, Matrix
 from sympy.physics.mechanics import *
 import numpy as np
 Vector.simp = False
 from wheelassemblygyrostat import WheelAssemblyGyrostat
 from utility import NumpyArrayOutput
+from benchmark_parameters import (gyrostat_benchmark_parameters,
+    gyrostat_benchmark_reference_configuration,
+    gyrostat_benchmark_external_forces)
 
 ## Generate a OpenGL modelview matrix as a column major length 16 numpy array
 #
@@ -46,19 +49,19 @@ def opengl_transformation_matrix(view_frame, view_origin,
 
     r = [object_origin.pos_from(view_origin) & uv for uv in view_frame]
     m = np.zeros((16,), dtype=object)
-    m[0] = dcm[0, 0]
-    m[1] = dcm[1, 0]
-    m[2] = dcm[2, 0]
-    m[4] = dcm[0, 1]
-    m[5] = dcm[1, 1]
-    m[6] = dcm[2, 1]
-    m[8] = dcm[0, 2]
-    m[9] = dcm[1, 2]
-    m[10] = dcm[2, 2]
-    m[12] = r[0]
-    m[13] = r[1]
-    m[14] = r[2]
-    m[15] = 1
+    m[0] = S(dcm[0, 0])
+    m[1] = S(dcm[1, 0])
+    m[2] = S(dcm[2, 0])
+    m[4] = S(dcm[0, 1])
+    m[5] = S(dcm[1, 1])
+    m[6] = S(dcm[2, 1])
+    m[8] = S(dcm[0, 2])
+    m[9] = S(dcm[1, 2])
+    m[10] = S(dcm[2, 2])
+    m[12] = S(r[0])
+    m[13] = S(r[1])
+    m[14] = S(r[2])
+    m[15] = S(1)
     return m
 
 ## Model derivation and C++ code generation
@@ -219,53 +222,115 @@ def derivation():
     # Camera related references frames
     cam_angles = symbols('azimuth elevation twist')
     cam_position = symbols('cam_x cam_y cam_z')
-    C_az = Y.orientnew('C_az', 'Axis', [cam_angles[0], -Y.z])       # Azimuth
-    C_el = C_az.orientnew('C_el', 'Axis', [cam_angles[1], -C_az.y]) # Elevation
-    C_twist = C_el.orientnew('C', 'Axis', [cam_angles[2], C_el.x])  # Twist
+    # Intermediate frames
+    C__ = Y.orientnew('C__', 'Axis', [-pi/S(2), Y.y])
+    C_ = C__.orientnew('C_', 'Axis', [pi/S(2), C__.z])
+    # When camera angles are all zero, camera should be pointed down Y.x axis
+    C_az = C_.orientnew('C_az', 'Axis', [cam_angles[0], C_.y])      # Azimuth
+    C_el = C_az.orientnew('C_el', 'Axis', [cam_angles[1], -C_az.x]) # Elevation
+    C = C_el.orientnew('C', 'Axis', [cam_angles[2], -C_el.z])  # Twist
     # OpenGL camera has x right, y up, and is pointed down -z axis, the
     # following rotatations make this happen
-    C_intermediate = C_twist.orientnew('C_', 'Axis', [pi/2, C_twist.z])
-    C = C_intermediate.orientnew('C', 'Axis', [pi/2, -C_intermediate.x])
 
     # Angular velocity of frames
-    print("Defining angular velocities...")
-    Y.set_ang_vel(N, u[0]*Y.z)
-    L.set_ang_vel(Y, u[1]*Y.x)
-    R.set_ang_vel(L, u[2]*L.y)
+    print("Defining angular velocities and angular accelerations...")
+    # Rear frame
+    R.set_ang_vel(N, (u[0]*Y.z + u[1]*L.x + u[2]*L.y).express(R))
+    R.set_ang_acc(N, R.ang_vel_in(N).diff(t, R).subs(qd_u_dict))
+
+    # Front frame
+    F.set_ang_vel(N, R.ang_vel_in(N).express(F) + u[3]*F.z)
+    F.set_ang_acc(N, F.ang_vel_in(N).diff(t, F).subs(qd_u_dict))
+
+    # Rear wheel
+    RW.set_ang_vel(N, R.ang_vel_in(N) + u[4]*R.y)
     RW.set_ang_vel(R, u[4]*R.y)
-    F.set_ang_vel(R, u[3]*R.z)
+    RW.set_ang_acc(N, RW.ang_vel_in(N).diff(t, R).subs(qd_u_dict) + 
+                      (R.ang_vel_in(N) ^ RW.ang_vel_in(N)))
+    # Front wheel
+    FW.set_ang_vel(N, F.ang_vel_in(N) + u[5]*F.y)
     FW.set_ang_vel(F, u[5]*F.y)
+    FW.set_ang_acc(N, FW.ang_vel_in(N).diff(t, F).subs(qd_u_dict)
+                    + cross(F.ang_vel_in(N), FW.ang_vel_in(N)))
+    FW.set_ang_acc(F, ud[5]*F.y)
 
     print("Defining rear wheel yaw frame unit vectors...")
-    wc_tc_uv_r = (Y.z - (R.y & Y.z)*R.y).normalize() # Wheel center to tire center
-    wc_tc_uv_r.simplify()
-    wyf_x_r = (R.y ^ Y.z).normalize()   # Wheel yaw frame, x, rear
-    wyf_y_r = Y.z ^ wyf_x_r             # Wheel yaw frame, y, rear
+    # Ground normal projected onto rear wheel plane
+    Yz_R = Y.z.express(R)
+    wc_tc_uv_r = (Yz_R - (R.y & Yz_R)*R.y)
+    wc_tc_uv_r_mag = wc_tc_uv_r.magnitude()
+    wc_tc_uv_r /= wc_tc_uv_r_mag
+    wyf_x_r = (R.y ^ Yz_R).normalize()   # Wheel yaw frame, x, rear
+    wyf_y_r = Yz_R ^ wyf_x_r             # Wheel yaw frame, y, rear
 
     print("Defining front wheel yaw frame unit vectors...")
-    wc_tc_uv_f = (Y.z.express(F) - (F.y & Y.z)*F.y).normalize() # Wheel center to tire center
-    wc_tc_uv_f.simplify()
-    wyf_x_f = (F.y ^ Y.z).normalize()   # Wheel yaw frame, x, front
-    wyf_y_f = Y.z ^ wyf_x_f             # Wheel yaw frame, y, front
+    # Ground normal projected onto front wheel plane
+    Yz_F = Y.z.express(F)
+    wc_tc_uv_f = (Yz_F - (F.y & Yz_F)*F.y)
+    wc_tc_uv_f_mag = wc_tc_uv_f.magnitude()
+    wc_tc_uv_f /= wc_tc_uv_f_mag
+    wyf_x_f = (F.y ^ Yz_F).normalize()   # Wheel yaw frame, x, front
+    wyf_y_f = Yz_F ^ wyf_x_f             # Wheel yaw frame, y, front
 
-    print("Defining positions of rear assembly points...")
-    gc_r = Point('gc_r')                               # Ground contact, rear
-    NO = gc_r.locatenew('NO', -q[6]*N.x - q[7]*N.y)    # Inertial origin
-    wc_r = gc_r.locatenew('wc_r',                      # Wheel center, rear
-                          -rear.r*Y.z - rear.R*wc_tc_uv_r)
-    mc_r = wc_r.locatenew('mc_r',                      # Mass center, rear
-                          rear.a*R.x + rear.b*R.z)
-    sa_r = wc_r.locatenew('sa_r', rear.c*R.x)          # Steer axis, rear
+    print("Defining kinematics of rear assembly points...")
+    # Rear ground contact
+    gc_r = Point('gc_r')
+    gc_r.set_vel(N, u[6]*wyf_x_r + u[7]*wyf_y_r + u[8]*Yz_R)
 
-    print("Defining positions of front assembly points...")
-    gc_f = Point('gc_f')                               # Ground contact, front
-    wc_f = gc_f.locatenew('wc_f',                      # Wheel center, front
-                          -front.r*Y.z - front.R*wc_tc_uv_f)
-    mc_f = wc_f.locatenew('mc_f',                      # Mass center, front
-                          front.a*F.x + front.b*F.z)
-    sa_f = wc_f.locatenew('sa_f', front.c*F.x)         # Steer axis, front
+    # Rear wheel center
+    wc_r = gc_r.locatenew('wc_r', -(rear.r*Yz_R + rear.R*wc_tc_uv_r))
+    wc_r.v2pt_theory(gc_r, N, RW)
+    wc_r.set_acc(N, wc_r.vel(N).diff(t, R).subs(qd_u_dict)
+                  + (R.ang_vel_in(N) ^ wc_r.vel(N)).subs(qd_u_dict))
 
-    sa_f.set_pos(sa_r, ls*R.z)                         # Connect assemblies
+    # Rear mass center
+    mc_r = wc_r.locatenew('mc_r', rear.a*R.x + rear.b*R.z)
+    mc_r.v2pt_theory(wc_r, N, R)
+    mc_r.a2pt_theory(wc_r, N, R)
+
+    # Rear steer axis point
+    sa_r = wc_r.locatenew('sa_r', rear.c*R.x)
+    sa_r.v2pt_theory(wc_r, N, R)
+
+    print("Defining kinematics of front assembly points...")
+    # Front ground contact
+    gc_f = Point('gc_f')
+    gc_f.set_vel(N, u[9]*wyf_x_f + u[10]*wyf_y_f + u[11]*Yz_F)
+
+    # Front wheel center
+    wc_f = gc_f.locatenew('wc_f', -(front.r*Yz_F + front.R*wc_tc_uv_f))
+    wc_f.v2pt_theory(gc_f, N, FW)
+    wc_f.set_acc(N, wc_f.vel(N).diff(t, F).subs(qd_u_dict)
+                  + (F.ang_vel_in(N) ^ wc_f.vel(N)).subs(qd_u_dict))
+
+    # Front mass center
+    mc_f = wc_f.locatenew('mc_f', front.a*F.x + front.b*F.z)
+    mc_f.v2pt_theory(wc_f, N, F)
+    mc_f.a2pt_theory(wc_f, N, F)
+
+    # Front steer axis point
+    sa_f = wc_f.locatenew('sa_f', front.c*F.x)
+    sa_f.v2pt_theory(wc_f, N, F)
+
+    # Connect assemblies together so we can form holonomic constraint
+    sa_f.set_pos(sa_r, ls*R.z)
+
+    # Generating kinematic positions in Yaw frame for debugging purposes
+    wc_r_rel_gc_r = np.array([wc_r.pos_from(gc_r) & uv for uv in Y],
+                              dtype=object)
+    mc_r_rel_gc_r = np.array([mc_r.pos_from(gc_r) & uv for uv in Y],
+                              dtype=object)
+    sa_r_rel_gc_r = np.array([sa_r.pos_from(gc_r) & uv for uv in Y],
+                              dtype=object)
+    mc_f_rel_gc_r = np.array([mc_f.pos_from(gc_r) & uv for uv in Y],
+                              dtype=object)
+    wc_f_rel_gc_r = np.array([wc_f.pos_from(gc_r) & uv for uv in Y],
+                              dtype=object)
+    sa_f_rel_gc_r = np.array([sa_f.pos_from(gc_r) & uv for uv in Y],
+                              dtype=object)
+    # Position from rear contact to front contact
+    gc_f_rel_gc_r = np.array([gc_f.pos_from(gc_r) & uv for uv in Y],
+                              dtype=object)
 
     print("Defining postion of camera relative to rear wheel contact...")
     cam_origin = gc_r.locatenew('cam_origin', cam_position[0]*Y.x
@@ -282,6 +347,8 @@ def derivation():
                                             [wyf_x_f, wyf_y_f, Y.z], gc_f)
     wc_f_ogl = opengl_transformation_matrix(C, cam_origin, FW, wc_f)
     mc_f_ogl = opengl_transformation_matrix(C, cam_origin, F, mc_f)
+
+    NO = gc_r.locatenew('NO', -q[6]*N.x - q[7]*N.y)    # Inertial origin
     N_ogl    = opengl_transformation_matrix(C, cam_origin, N, NO)
 
     print("Forming kinematic ODE's...")
@@ -292,7 +359,8 @@ def derivation():
         f_1[i] = -u[i]
         f_1_du[i, i] = S(-1)
 
-    v_gc_rw = gc_r.pos_from(wc_r).diff(t, L).subs(qd_u_dict) + (L.ang_vel_in(RW) ^ gc_r.pos_from(wc_r))
+    v_gc_rw = (gc_r.pos_from(wc_r).diff(t, R).subs(qd_u_dict) +
+            (R.ang_vel_in(RW) ^ gc_r.pos_from(wc_r)))
     f_1[6] = -(v_gc_rw & N.x)
     f_1[7] = -(v_gc_rw & N.y)
     for j, qj in enumerate(q):
@@ -307,20 +375,8 @@ def derivation():
     f_c = np.array([Y.z & gc_f.pos_from(gc_r)])
     f_c_dq = np.array([f_c[0].diff(qi) for qi in q])
 
-    print("Forming velocities of rear assembly points...")
-    gc_r.set_vel(N, u[6]*wyf_x_r + u[7]*wyf_y_r + u[8]*Y.z)
-    wc_r.v2pt_theory(gc_r, N, RW)
-    mc_r.v2pt_theory(wc_r, N, R)
-    sa_r.v2pt_theory(wc_r, N, R)
-
-    print("Forming velocities of front assembly points...")
-    gc_f.set_vel(N, u[9]*wyf_x_f + u[10]*wyf_y_f + u[11]*Y.z)
-    wc_f.v2pt_theory(gc_f, N, FW)
-    mc_f.v2pt_theory(wc_f, N, F)
-    sa_f.v2pt_theory(wc_f, N, F)
-
     print("Forming velocity constraint and partial derivative matrices...")
-    f_v_vec = sa_r.vel(N) - sa_f.vel(N)
+    f_v_vec = sa_r.vel(N) + (R.ang_vel_in(N) ^ sa_f.pos_from(sa_r)) - sa_f.vel(N)
     f_v = np.zeros((3,), dtype=object)
     f_v_du = np.zeros((3, 12), dtype=object)
     f_v_dudq = np.zeros((3, 12, 3), dtype=object)
@@ -328,6 +384,8 @@ def derivation():
 
     for i, uv in enumerate(F):
         f_v[i] = f_v_vec & uv
+        for qdi in qd:
+            assert(f_v[i].diff(qdi) == 0)
         for j, uj in enumerate(u):
             f_v_du[i, j] = f_v[i].diff(uj)
             for k, qk in enumerate(q_min):
@@ -347,19 +405,7 @@ def derivation():
 
     print("Forming rear assembly partial velocities...")
     gc_r_pv, mc_r_pv = partial_velocity([gc_r.vel(N), mc_r.vel(N)], u, N)
-
-    print("Forming front assembly partial velocities...")
     gc_f_pv, mc_f_pv = partial_velocity([gc_f.vel(N), mc_f.vel(N)], u, N)
-
-    print("Forming accelerations of rear assembly points...")
-    wc_r.set_acc(N, wc_r.vel(N).dt(N).subs(qd_u_dict))
-    mc_r.a2pt_theory(wc_r, N, R)
-    sa_r.a2pt_theory(wc_r, N, R)
-
-    print("Forming accelerations of front assembly points...")
-    wc_f.set_acc(N, wc_f.vel(N).dt(N).subs(qd_u_dict))
-    mc_f.a2pt_theory(wc_f, N, F)
-    sa_f.a2pt_theory(wc_f, N, F)
 
     print("Defining applied forces and torques...")
     F_gc_r = rear.Gx*wyf_x_r + rear.Gy*wyf_y_r + rear.Gz*Y.z
@@ -390,6 +436,7 @@ def derivation():
     # q[3], the lean, pitch and steer angles, since the others do not appear in
     # any of the dynamics
     gaf = np.zeros((len(u),), dtype=object)
+    gaf_min = np.zeros((len(u),), dtype=object)
     gaf_dq = np.zeros((len(u), len(q_min)), dtype=object)
     gaf_dr = np.zeros((len(u), len(r)), dtype=object)
     gif = np.zeros((len(u),), dtype=object)
@@ -410,7 +457,10 @@ def derivation():
                 + (T_F & F_N_pav[i])
                 + (T_RW & RW_N_pav[i])
                 + (T_FW & FW_F_pav[i]))
-
+        # Minimal generalized active forces for debugging
+        gaf_min[i] = ((F_gc_r & gc_r_pv[i]) + (F_gc_f & gc_f_pv[i])
+                    + ((rear.m * g * Y.z) & mc_r_pv[i])
+                    + ((front.m * g * Y.z) & mc_f_pv[i]))
         # Generalized inertia forces
         gif[i] = - (rear.m*(a_r & mc_r_pv[i])
                   + front.m*(a_f & mc_f_pv[i])
@@ -457,6 +507,15 @@ def derivation():
     code.generate(mc_f_ogl, "Bicycle::mc_f_ogl")
     code.generate(N_ogl, "Bicycle::N_ogl")
 
+    print("Generating kinematics related outputs...")
+    code.generate(wc_r_rel_gc_r, "Bicycle::rear_wheel_center_point")
+    code.generate(mc_r_rel_gc_r, "Bicycle::rear_mass_center_point")
+    code.generate(sa_r_rel_gc_r, "Bicycle::rear_steer_axis_point")
+    code.generate(wc_f_rel_gc_r, "Bicycle::front_wheel_center_point")
+    code.generate(mc_f_rel_gc_r, "Bicycle::front_mass_center_point")
+    code.generate(sa_f_rel_gc_r, "Bicycle::front_steer_axis_point")
+    code.generate(gc_f_rel_gc_r, "Bicycle::front_ground_contact_point")
+
     print("Generating configuration constraint (f_c) code...")
     code.generate(f_c, "Bicycle::f_c")
     print("Generating configuration constraint partial derivatives code" +
@@ -492,6 +551,7 @@ def derivation():
 
     print("Generating generalized active forces (gaf) code...")
     code.generate(gaf, "Bicycle::gaf")
+    code.generate(gaf_min, "Bicycle::gaf_min")
     print("Generating generalized active forces partial derivative matrices " +
           "(gaf_dq, gaf_dr) code...")
     code.generate(gaf_dq, "Bicycle::gaf_dq")

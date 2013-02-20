@@ -16,9 +16,8 @@ using ::Eigen::PermutationMatrix;
 using ::Eigen::Stride;
 using ::Eigen::Unaligned;
 
-typedef double Real;
-typedef Eigen::Matrix<Real, Eigen::Dynamic, 1> Vector;
-typedef Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> Matrix;
+typedef Eigen::Matrix<double, Eigen::Dynamic, 1> Vector;
+typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> Matrix;
 
 /** A class representing a dynamic model of a bicycle.
  *
@@ -64,33 +63,93 @@ class Bicycle {
    */
   static const int s = 22;
 
-  /** 8 x 1 matrix of doubles with ordering:
+  /** Default constructor.
    *
-   * - Rear assembly yaw angle \f$\psi\f$
-   * - Rear assembly roll angle \f$\phi\f$
-   * - Rear assembly pitch angle \f$\theta\f$
-   * - Steer angle \f$\delta\f$
-   * - Rear wheel angle \f$\theta_R\f$
-   * - Front wheel angle \f$\theta_F\f$
-   * - Rear wheel contact point \f$x\f$
-   * - Rear wheel contact point \f$y\f$
+   * Initializes a bicycle with zero state and zero for all parameters except
+   * gravity which is set by default to 9.81 m/s^2.  The dependent coordinate
+   * is set to the pitch angle \f$\theta\f$, and the dependent speeds are set
+   * to be the yaw rate \f$\dot{\psi}\f$, pitch rate \f$\dot{\theta}\f$, and
+   * front wheel rate \f$\dot{\theta}_F\f$.
+   */
+  Bicycle();
+
+  /** Set bicycle state.
+   *
+   * \param[in] x The state to set the bicycle to, with the following ordering:
+   *
+   * - Generalized coordinates (Vector of 8 doubles)
+   * - Generalized speeds (Vector of 12 doubles)
+   *
+   * No checking is performed to determine if the assigned state satisfies the
+   * configuration or velocity constraints.
+   */
+  void set_state(const Vector & x);
+
+  /** Set i-th state to xi.
+   *
+   * \param[in] i Index of state to set.
+   * \param[in] xi Value assigned to state i.
+   */
+  void set_state(int i, double xi);
+
+  /** Set coordinates.
+   *
+   * \param[in] q Vector of length 8 with the following ordering:
+   *
+   * - Rear assembly yaw angle \f$q_0\f$
+   * - Rear assembly roll angle \f$q_1\f$
+   * - Rear assembly pitch angle \f$q_2\f$
+   * - Steer angle \f$q_3\f$
+   * - Rear wheel angle \f$q_4\f$
+   * - Front wheel angle \f$q_5\f$
+   * - Rear wheel contact point \f$q_6\f$
+   * - Rear wheel contact point \f$q_7\f$
    *
    * Note that the condition that the front wheel touch the ground plane
-   * imposes a nonlinear relationship between \f$\phi\f$, \f$\theta\f$, and
-   * \f$\delta\f$.  The default choice for the dependent coordinate is
-   * \f$\theta\f$ though for highly leaned configurations this may not be
+   * imposes a nonlinear relationship between roll \f$q_1\f$, pitch \f$q_2\f$,
+   * and steer \f$q_3\f$.  The default choice for the dependent coordinate is
+   * \f$q_2\f$ though for highly leaned configurations this may not be
    * appropriate.
    */
-  typedef Eigen::Matrix<double, n, 1> coordinates;
+  void set_coordinates(const Vector & q);
 
-  /** 12 x 1 matrix of doubles with ordering:
+  /** Get coordinates
    *
-   * - Rear assembly yaw angle rate \f$\dot{\psi}\f$
-   * - Rear assembly roll angle rate \f$\dot{\phi}\f$
-   * - Rear assembly pitch angle rate \f$\dot{\theta}\f$
-   * - Steer angle \f$\dot{\delta}\f$
-   * - Rear wheel angle \f$\dot{\theta}_R\f$
-   * - Front wheel angle \f$\dot{\theta}_F\f$
+   * \returns A Vector of length 8 with the following ordering:
+   *
+   * - Rear assembly yaw angle \f$q_0\f$
+   * - Rear assembly roll angle \f$q_1\f$
+   * - Rear assembly pitch angle \f$q_2\f$
+   * - Steer angle \f$q_3\f$
+   * - Rear wheel angle \f$q_4\f$
+   * - Front wheel angle \f$q_5\f$
+   * - Rear wheel contact point \f$q_6\f$
+   * - Rear wheel contact point \f$q_7\f$
+   */
+  Vector coordinates() const;
+
+  /** Return i-th coordinate
+   *
+   */
+  double coordinate(int i) const;
+
+  /** Set i-th coordinate to qi.
+   *
+   * \param[in] i Index of coordinate to set.
+   * \param[in] qi Value assigned to coordinate i.
+   */
+  void set_coordinate(int i, double qi);
+
+  /** Set speeds.
+   *
+   * \param[in] u Vector of length 12 with the following ordering
+   *
+   * - Rear assembly yaw angle rate \f$\dot{q}_0\f$
+   * - Rear assembly roll angle rate \f$\dot{q}_1\f$
+   * - Rear assembly pitch angle rate \f$\dot{q}_2\f$
+   * - Steer angle rate \f$\dot{q}_3\f$
+   * - Rear wheel angle rate \f$\dot{q}_4\f$
+   * - Front wheel angle rate \f$\dot{q}_5\f$
    * - Rear wheel contact point longitudinal velocity \f$v_{Rx}\f$
    * - Rear wheel contact point lateral velocity \f$v_{Ry}\f$
    * - Rear wheel contact point vertical velocity \f$v_{Rz}\f$
@@ -102,19 +161,34 @@ class Bicycle {
    * rear assemblies have the same velocity imposes a linear relationship
    * between all speeds.  Three scalar equations relate these twelve speeds;
    * and hence only nine can be chosen independently.  The default choice for
-   * the dependent speeds is \f$\dot{\psi}\f$, \f$\dot{\theta}\f$,
-   * \f$\dot{\theta}_F\f$.
+   * the dependent speeds is yaw rate \f$\dot{q}_0\f$, pitch rate
+   * \f$\dot{q}_2\f$, and front wheel rate \f$\dot{q}_5\f$.
    */
-  typedef Eigen::Matrix<double, o, 1> speeds;
+  void set_speeds(const Vector & u);
 
-  /** 20 x 1 matrix of doubles with ordering:
+  /** Set i-th speed to ui.
    *
-   * - Generalized coordinates (8 x 1 matrix of doubles)
-   * - Generalized speeds (12 x 1 matrix of doubles)
+   * \param[in] i Index of speed to set.
+   * \param[in] ui Value assigned to speed i.
    */
-  typedef Eigen::Matrix<double, n + o, 1> state;
+  void set_speed(int i, double ui);
 
-  /** 22 x 1 matrix of doubles with ordering:
+  /** Return i-th speed
+   *
+   */
+  double speed(int i) const;
+
+  /** Get generalized speeds.
+   **/
+  Vector speeds() const;
+
+  /** Get system state.
+   **/
+  Vector state() const;
+
+  /** Set exogenous inputs
+   *
+   * \param[in] Vector of length 22 with the following ordering
    *
    * - Rear wheel axle torque
    * - Rear assembly torque about x direction
@@ -143,59 +217,7 @@ class Bicycle {
    * as an input that can vary, then it makes sense to consider it as an input.
    *
    */
-  typedef Eigen::Matrix<double, s, 1> inputs;
-
-  /** Default constructor.
-   *
-   * Initializes a bicycle with zero state and zero for all parameters except
-   * gravity which is set by default to 9.81 m/s^2.  The dependent coordinate
-   * is set to the pitch angle \f$\theta\f$, and the dependent speeds are set
-   * to be the yaw rate \f$\dot{\psi}\f$, pitch rate \f$\dot{\theta}\f$, and
-   * front wheel rate \f$\dot{\theta}_F\f$.
-   */
-  Bicycle();
-
-  /** Set bicycle state.
-   *
-   * \param[in] x The state to set the bicycle to.
-   *
-   * No checking is performed to determine if the assigned state satisfies the
-   * configuration or velocity constraints.
-   */
-  void set_state(const state & x);
-
-  /** Set i-th state to xi.
-   *
-   * \param[in] i Index of state to set.
-   * \param[in] xi Value assigned to state i.
-   */
-  void set_state(int i, double xi);
-
-  /** Set coordinates.
-   *
-   * \param[in] q Coordinates to set.
-   */
-  void set_coordinates(const coordinates & q);
-
-  /** Set i-th coordinate to qi.
-   *
-   * \param[in] i Index of coordinate to set.
-   * \param[in] qi Value assigned to coordinate i.
-   */
-  void set_coordinate(int i, double qi);
-
-  /** Set speeds.
-   *
-   * \param[in] u Speeds to set.
-   */
-  void set_speeds(const speeds & u);
-
-  /** Set i-th speed to ui.
-   *
-   * \param[in] i Index of speed to set.
-   * \param[in] ui Value assigned to speed i.
-   */
-  void set_speed(int i, double ui);
+  void set_inputs(const Vector & r);
 
   /** Set the physical parameters.
    *
@@ -213,6 +235,21 @@ class Bicycle {
    * \param[in] w Whipple parameters.
    */
   void set_parameters(const Whipple & w);
+
+  /** Get rear assembly parameters
+   *
+   */
+  WheelAssemblyGyrostat rear_parameters() const;
+
+  /** Get front assembly parameters
+   *
+   */
+  WheelAssemblyGyrostat front_parameters() const;
+
+  /** Get steer axis offset
+   *
+   */
+  double steer_axis_offset() const;
 
   /** Set the dependent coordinate.
    *
@@ -247,7 +284,7 @@ class Bicycle {
    *
    * \pre State and parameters of bicycle are set.
    *
-   * \returns The constraint forces as a 7 x 1 matrix with ordering:
+   * \returns The constraint forces as a length 7 Vector with ordering:
    * - \f$G_{Rx}\f$
    * - \f$G_{Ry}\f$
    * - \f$G_{Rz}\f$
@@ -263,12 +300,13 @@ class Bicycle {
    * downwards (to the half space opposite that which the bicycle is normally
    * in).
    * */
-  Matrix steady_constraint_forces() const;
+  Vector steady_constraint_forces() const;
 
   /** Solve configuration constraint.
    *
    * \param[in] ftol Tolerance used to terminate root finder.
    * \param[in] iter Maximum number of iterations.
+   * \returns Number of number of Newton iterations completed.
    *
    * \pre The dependent coordinate has been properly selected and the value of
    * that coordinate has been set as an initial guess for the root finder.
@@ -292,8 +330,8 @@ class Bicycle {
    * poor initial guess can lead to convergence to a root other than the
    * desired one.
    */
-  void solve_configuration_constraint_and_set_state(double ftol=1e-14,
-                                                    int iter=20);
+  std::pair<int, double> solve_configuration_constraint_and_set_state(double ftol=1e-14,
+                                                                      int iter=20);
 
   /** Solve velocity constraints.
    *
@@ -303,6 +341,8 @@ class Bicycle {
    *
    * \post The dependent speeds are solved for and the corresponding state
    * variables are set.
+   *
+   * \returns Residual of solution:  B_i * u_d + B_d * u_i
    *
    * The velocity constraints are of the form:
    * \f[
@@ -321,19 +361,45 @@ class Bicycle {
    * for \f$u_d\f$. An invalid choice of dependent speeds cause \f$B_d(q)\f$ to
    * be singular or poorly conditioned.
    */
-  void solve_velocity_constraints_and_set_state();
+  Vector solve_velocity_constraints_and_set_state();
 
-  /** Form linearized full mass matrix
+  /** Form linearized mass matrix
    *
-   * \returns a 20 x 20 coefficient matrix of dq/dt and du/dt
+   * \returns a 20 x 20 matrix of dq/dt and du/dt coefficients
    */
   Matrix mass_matrix_full() const;
 
   /** Form linearized state matrix
    *
-   * \returns a 20 x 16 coefficient matrix
+   * \returns a 20 x 16 matrix of dq_i/dt and du_i/dt coefficients
    */
   Matrix independent_state_matrix() const;
+
+  /** Linearized state space matrix
+   *
+   * \returns 16 x 16 matrix associated with independent coordinates and speeds
+   */
+  Matrix system_dynamics_matrix() const;
+
+  /** State derivatives
+   *
+   */
+  Vector state_derivatives() const;
+
+  /** Position of points
+   *
+   * \returns a 7 x 3 matrix with the following seven points, all relative to
+   * the rear wheel contact point:
+   *  - Rear wheel center
+   *  - Rear assembly mass center
+   *  - Rear assembly steer axis point
+   *  - Front wheel center
+   *  - Front assembly mass center
+   *  - Front assembly steer axis point
+   *  - Front wheel contact point
+   *
+   */
+  Matrix points_of_interest() const;
 
   // This is to ensure state has 128-bit alignment and hence vectorizable
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -347,6 +413,13 @@ class Bicycle {
   void wc_f_ogl(double ar[16]) const;
   void mc_f_ogl(double ar[16]) const;
   void N_ogl(double ar[16]) const;
+  void rear_wheel_center_point(double ar[3]) const;
+  void rear_mass_center_point(double ar[3]) const;
+  void rear_steer_axis_point(double ar[3]) const;
+  void front_wheel_center_point(double ar[3]) const;
+  void front_mass_center_point(double ar[3]) const;
+  void front_steer_axis_point(double ar[3]) const;
+  void front_ground_contact_point(double ar[3]) const;
   void f_c(double ar[1]) const;
   void f_c_dq(double ar[n]) const;
   void f_v_du(double ar[m * o]) const;
@@ -363,11 +436,13 @@ class Bicycle {
   void gif_ud_zero_dq(double ar[o * n_min]) const;
   void gif_ud_zero_du(double ar[o * o]) const;
   void gaf(double ar[o]) const;
+  void gaf_min(double ar[o]) const;
   void gaf_dq(double ar[o * n_min]) const;
   void gaf_dr(double ar[o * s]) const;
 
   // Private member functions related to linearization of dynamic equations
   Matrix Bd_inverse_Bi() const;
+  Matrix f_v_dudt() const;
   Matrix f_v_dq() const;
   Matrix M_qq() const;
   Matrix M_uqc() const;
@@ -397,12 +472,12 @@ class Bicycle {
   void update_coordinate_permutation();
   void update_speed_permutation();
   void update_permutations();
-  Matrix all_inputs_except_constraint_forces() const;
+  Vector all_inputs_except_constraint_forces() const;
   int best_dependent_coordinate() const;
   std::set<int> best_dependent_speeds() const;
 
   // Private data
-  state state_;                        // Bicycle state, q's then u's
+  Eigen::Matrix<double, n + o, 1> state_;// Bicycle state, q's then u's
   WheelAssemblyGyrostat rear_, front_; // Wheel gyrostats
   double ls_, g_, steer_torque_;       // Steer axis offset, gravity, torque
 
