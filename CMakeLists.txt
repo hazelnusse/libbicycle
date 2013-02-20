@@ -6,10 +6,10 @@ set(CMAKE_MODULE_PATH ${BICYCLE_SOURCE_DIR}/cmake/Modules)
 option(BUILD_SHARED_LIBS "Build shared libraries." ON)
 option(BICYCLE_BUILD_TESTS "Build tests." ON)
 option(BICYCLE_BUILD_EXAMPLES "Build examples." ON)
-option(BICYCLE_BUILD_DOXYGEN_DOCS "Build doxygen documentation." ON)
+option(BICYCLE_BUILD_DOXYGEN_DOCS "Build doxygen documentation." OFF)
 option(BICYCLE_DOXYGEN_MATHJAX_USECDN "Use cdn servers to host MathJax (overrides BICYCLE_DOXYGEN_MATHJAX_LOCAL" ON)
 set(BICYCLE_DOXYGEN_MATHJAX_LOCAL "" CACHE PATH "Location of MathJax javascript library")
-option(BICYCLE_BUILD_PYTHON_EXTENSION_MODULES "Build extension modules for Python" ON)
+option(BICYCLE_BUILD_PYTHON_EXTENSION_MODULES "Build extension modules for Python" OFF)
 
 # Set g++ compiler flags if GNU C++ compiler is being used
 if(CMAKE_COMPILER_IS_GNUCXX)
