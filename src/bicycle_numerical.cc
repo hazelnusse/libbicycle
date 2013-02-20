@@ -213,13 +213,13 @@ Vector Bicycle::state_derivatives() const
 Matrix Bicycle::f_v_dudt() const
 {
   Matrix Bdot = Matrix::Zero(m, o);
-  Vector fvdq(m * o * n_min);
-  f_v_dudq(fvdq.data());
+  Vector fvdudq(m * o * n_min);
+  f_v_dudq(fvdudq.data());
   for (int i = 0; i < 3; ++i) {
       double ui = state_[n + i + 1];  // lean rate, pitch rate, steer rate
       Bdot += Map<Matrix,
                   Unaligned,
-                  Stride<m * n_min, n_min>>(fvdq.data() + i, m, o) * ui;
+                  Stride<m * n_min, n_min>>(fvdudq.data() + i, m, o) * ui;
   }
   return Bdot;
 }

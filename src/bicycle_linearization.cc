@@ -77,20 +77,7 @@ Matrix Bicycle::A_uuc() const
 {
   // - \nabla_u f_a
   // This is true even when du/dt != 0
-  Vector B_dq_ar(m * o * n_min);
-  f_v_dudq(B_dq_ar.data()); // Populate the raw data
-  Matrix B_j_dq = Matrix::Zero(m, o);
-  // lean rate, pitch rate, steer rate
-  // note negative sign!!!
-  ::Eigen::Vector3d u_tilde = -state_.block<n_min, 1>(n + 1, 0);
-
-  // Iterate over each column of B(q)
-  // Multiply each 3 x 3 matrix by u_tilde
-  for (int j = 0; j < o; ++j) { // column index
-     B_j_dq.block<m, 1>(0, j) = Map<Matrix, Unaligned, Stride<n_min*o, 1>>
-       (&(B_dq_ar[j*n_min]), n_min, n_min) * u_tilde;
-  }
-  return B_j_dq;
+  return -f_v_dudt();
 }
 
 Matrix Bicycle::A_uqd() const
@@ -128,7 +115,7 @@ Matrix Bicycle::A_uqd() const
   Matrix B_d(B.block<m, m>(0, o - m)); // dependent columns of B
   FullPivHouseholderQR<Matrix> decomposition;  // QR decomposition so we can
   decomposition.compute(B_d);                  // solve B_d * x = rhs for x
-  Matrix C = decomposition.solve(B_i).transpose();
+  Matrix C = decomposition.solve(-B_i).transpose();
 
   // Constraint coefficient matrix, partial derivatives
   Vector B_dq_ar(m * o * n_min);   // stored as a (m, o, n_min) C style array
@@ -139,27 +126,21 @@ Matrix Bicycle::A_uqd() const
         + gif_ud_zero_dq_mat.block<o - m, n_min>(0, 0));
 
   // Dependent portion (Term 2)
-  //
-  // Term 2 a:  \nabla_q[C] * (F_d + F_{dqu}^*)
-  // Term 2 b:   (B_d^{-1} * B_i)^T * \nabla_q[F_d + F_{dqu}^*]
   for (int k = 0; k < 3; ++k) {   // q[k + 1] = q[1], q[2], q[3]
-    // Map<Matrix, Unaligned, Stride<n_min*o, n_min>> B_dq_k_map(&B_dq_ar[k], m, o);
+    // m x o matrix of partial derivatives w.r.t. q[1], q[2], q[3]
     Matrix B_dq_k = Map<Matrix, Unaligned,
-                        Stride<n_min*o, n_min>>(&B_dq_ar[k], m, o) * P_u_;
+                        Stride<n_min*o, n_min>>(B_dq_ar.data() + k, m, o) * P_u_;
 
-    // Term 2 a:
+    // Term 2 a:  \nabla_q[C] * (F_d + F_{dqu}^*)
     mat.block<o - m, 1>(0, k + 1) -=
-       (decomposition.solve(B_dq_k.block<m, o - m>(0, 0)).transpose()
-      - B_i.transpose() *
-          (B_d.transpose() * B_dq_k.block<m, m>(0, o - m) * B_d.transpose()))
-      * (gaf_vec.block<m, 1>(o - m, 0) + gif_ud_zero_vec.block<m, 1>(o - m, 0));
-
-    // Term 2 b:
-    mat.block<o - m, 1>(0, k + 1) -= 
-      C * (gaf_dq_mat.block<m, 1>(o - m, k)
-         + gif_ud_zero_dq_mat.block<m, 1>(o - m, k));
-
+        -((decomposition.solve(B_dq_k.block<m, o - m>(0, 0))
+          + decomposition.solve(B_dq_k.block<m, m>(0, o - m)) * C.transpose()).transpose()
+         * (gaf_vec.block<m, 1>(o - m, 0) + gif_ud_zero_vec.block<m, 1>(o - m, 0)));
   }
+  // Term 2 b:   (B_d^{-1} * B_i)^T * \nabla_q[F_d + F_{dqu}^*]
+  mat.block<o - m, 1>(0, 1) -= C * (gaf_dq_mat.block<m, 1>(o - m, 0)
+         + gif_ud_zero_dq_mat.block<m, 1>(o - m, 0));
+
   return mat;
 }
 

@@ -66,10 +66,11 @@ def opengl_transformation_matrix(view_frame, view_origin,
 
 ## Model derivation and C++ code generation
 #
-# 
+# This function forms kinematic and dynamic quantities in symbolic form.  It
+# then arranges them in numpy arrays of various shapes, and uses the
+# NumpyArrayOutput class to generate output code.
 def derivation():
-    # ## Model description
-    # ### Parameters
+    ## Model description
     # The model takes a front/rear symmetric view of the bicycle.  Eighteen
     # parameters are defined which each have a front and rear analog. Geometric and
     # inertial axial symmetry is assumed for both the front and the rear wheels.
@@ -88,24 +89,19 @@ def derivation():
     # the rear assembly mass, $m_f$ for the front assembly mass.  The parameters
     # are:
     #
-    # * $A, B, C, D, E, F$:  Inertia scalars of combined wheel and frame.
+    # * $Ixx, Iyy, Izz, Ixy, Ixz$:  Inertia scalars of combined wheel and frame.
     # * $J$: spin inertia of wheel.
     # * $m$: combined mass of wheel and frame.
-    # * $r, a, b$: Wheel major radii, tire cross section major and minor radii (wheel is modelled as a revolved ellipse).
-    # * $c, d, e$: distances from wheel center to frame and wheel mass center.
-    # * $f, g, h$: distances from wheel center to steer axis point
-    # * $i, j$: axle misalignment angles; first about frame fixed $y$, then about rotated $x$.
-    #
-    # I manage these parameters by declaring two instances of the
-    # `WheelAssemblyGyrostat` class:
-
+    # * $R, r: Wheel major radii, tire cross section radii
+    # * $a, b$: distances from wheel center to mass center in x and z directions
+    # * $c$: distances from wheel center to steer axis point in x direction
     rear = WheelAssemblyGyrostat('rear')
     front = WheelAssemblyGyrostat('front')
 
     # Gravitational constant, time
     ls, g, t = symbols('ls_ g_ t')
 
-    # ### Generalized coordinates
+    ## Generalized coordinates
     #
     # The choice of coordinates are identical as to those used by [Meeijaard et
     # al.][Meijaard2007], with one exception.  The rear frame pitch ($\theta_B$ in
@@ -137,7 +133,7 @@ def derivation():
     q_min = [q[1], q[2], q[3]]  # lean, pitch, steer
     qd = [qi.diff(t) for qi in q]
 
-    # ### Generalized speeds
+    ## Generalized speeds
     #
     # A total of 12 generalized speeds are used to describe the angular velocities
     # of each body and the velocities of each mass center.  Six of these
@@ -185,7 +181,7 @@ def derivation():
     steady_no_slip = {u[1]:0, u[2]:0, u[3]:0, u[6]:0, u[7]:0, u[8]:0, u[9]:0,
                       u[10]:0, u[11]:0}
 
-    # ### Applied forces and torques
+    ## Applied forces and torques
     #
     # The model includes joint torques at each revolute joint: rear wheel torque,
     # steer torque, front wheel torque.  External forces and torques are applied to
@@ -195,8 +191,6 @@ def derivation():
     # respect to a reference frame with with one unit vector normal to the ground
     # plane, another perpendicular to the line defined by the intersection of the
     # wheel plane and ground plane, and the third perpendicular to the other two.
-
-    # Steer torque
     T_s = symbols('steer_torque_')
     # Control/disturbance input vector, 22 x 1
     r = np.array(
@@ -245,7 +239,7 @@ def derivation():
     # Rear wheel
     RW.set_ang_vel(N, R.ang_vel_in(N) + u[4]*R.y)
     RW.set_ang_vel(R, u[4]*R.y)
-    RW.set_ang_acc(N, RW.ang_vel_in(N).diff(t, R).subs(qd_u_dict) + 
+    RW.set_ang_acc(N, RW.ang_vel_in(N).diff(t, R).subs(qd_u_dict) +
                       (R.ang_vel_in(N) ^ RW.ang_vel_in(N)))
     # Front wheel
     FW.set_ang_vel(N, F.ang_vel_in(N) + u[5]*F.y)
@@ -436,7 +430,6 @@ def derivation():
     # q[3], the lean, pitch and steer angles, since the others do not appear in
     # any of the dynamics
     gaf = np.zeros((len(u),), dtype=object)
-    gaf_min = np.zeros((len(u),), dtype=object)
     gaf_dq = np.zeros((len(u), len(q_min)), dtype=object)
     gaf_dr = np.zeros((len(u), len(r)), dtype=object)
     gif = np.zeros((len(u),), dtype=object)
@@ -457,10 +450,7 @@ def derivation():
                 + (T_F & F_N_pav[i])
                 + (T_RW & RW_N_pav[i])
                 + (T_FW & FW_F_pav[i]))
-        # Minimal generalized active forces for debugging
-        gaf_min[i] = ((F_gc_r & gc_r_pv[i]) + (F_gc_f & gc_f_pv[i])
-                    + ((rear.m * g * Y.z) & mc_r_pv[i])
-                    + ((front.m * g * Y.z) & mc_f_pv[i]))
+
         # Generalized inertia forces
         gif[i] = - (rear.m*(a_r & mc_r_pv[i])
                   + front.m*(a_f & mc_f_pv[i])
@@ -551,7 +541,6 @@ def derivation():
 
     print("Generating generalized active forces (gaf) code...")
     code.generate(gaf, "Bicycle::gaf")
-    code.generate(gaf_min, "Bicycle::gaf_min")
     print("Generating generalized active forces partial derivative matrices " +
           "(gaf_dq, gaf_dr) code...")
     code.generate(gaf_dq, "Bicycle::gaf_dq")
