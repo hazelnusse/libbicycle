@@ -10,6 +10,9 @@ target_link_libraries(testNormalForces gtest_main bicycle)
 add_executable(testKinematics testKinematics.cc)
 target_link_libraries(testKinematics gtest_main bicycle)
 
+add_executable(testEigenvalues testEigenvalues.cc)
+target_link_libraries(testEigenvalues gtest_main bicycle)
+
 # Add test to testing framework
 add_test(NAME testWhipple
          COMMAND testWhipple)
@@ -19,3 +22,6 @@ add_test(NAME testNormalForces
 
 add_test(NAME testKinematics
          COMMAND testKinematics)
+
+add_test(NAME testEigenvalues
+         COMMAND testEigenvalues)

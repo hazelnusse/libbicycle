@@ -105,11 +105,4 @@ TEST(KinematicsTest, BenchmarkMassCenterLocations)
   r = b.rear_parameters(); f = b.front_parameters();
   EXPECT_DOUBLE_EQ(w.mR + w.mB, r.m);
   EXPECT_DOUBLE_EQ(w.mF + w.mH, f.m);
-  // Verify forces
-  Vector cf = b.steady_constraint_forces();
-  double front_normal = -w.g/w.w*(r.m * mc_r_x + f.m * mc_f_x);
-  double rear_normal = -w.g/w.w*((gc_f_x - mc_r_x) * r.m + (gc_f_x - mc_f_x)*f.m);
-  EXPECT_DOUBLE_EQ(front_normal, cf[5]);
-  EXPECT_DOUBLE_EQ(rear_normal, cf[2]);
-
 }
