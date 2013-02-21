@@ -54,7 +54,7 @@ TEST(UprightSteadyForwardCruise, BenchmarkEigenvalues)
   Map<Eigen::Matrix<std::complex<double>,11, 4, ColMajor>>
         e(reinterpret_cast<std::complex<double> *>(evals));
 
-  for (int i; i < 11; ++i) {
+  for (int i = 0; i < 11; ++i) {
     b.set_speed(4, -i/w.rR);
     b.solve_velocity_constraints_and_set_state();
     bicycle::Matrix A_full = b.mass_matrix_full()
