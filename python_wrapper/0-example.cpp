@@ -58,10 +58,10 @@ static struct PyModuleDef bicycle_python_module = {
 PyMODINIT_FUNC 
 PyInit_bicycle_python()
 {
-    using namespace bicycle_python;
-    import_array();
-    PyObject * m = PyModule_Create(&bicycle_python_module);
-    return m;
+  using namespace bicycle_python;
+  import_array();   // numpy array
+  PyObject * m = PyModule_Create(&bicycle_python_module);
+  return m;
 }
 
 } // namespace bicycle_python
