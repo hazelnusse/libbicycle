@@ -66,6 +66,7 @@ else (EIGEN3_INCLUDE_DIR)
       ${CMAKE_INSTALL_PREFIX}/include
       ${KDE4_INCLUDE_DIR}
       PATH_SUFFIXES eigen3 eigen
+      DOC "Path to Eigen Directory"
     )
 
   if(EIGEN3_INCLUDE_DIR)
