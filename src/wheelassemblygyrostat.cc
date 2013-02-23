@@ -26,8 +26,19 @@ std::ostream & operator<<(std::ostream & os,
      << "r   = " << std::setw(25) <<   w.r << std::endl
      << "a   = " << std::setw(25) <<   w.a << std::endl
      << "b   = " << std::setw(25) <<   w.b << std::endl
-     << "c   = " << std::setw(25) <<   w.c << std::endl;
+     << "c   = " << std::setw(25) <<   w.c << std::endl
+     << "Tw  = " << std::setw(25) <<  w.Tw << std::endl
+     << "Tx  = " << std::setw(25) <<  w.Tx << std::endl
+     << "Ty  = " << std::setw(25) <<  w.Ty << std::endl
+     << "Tz  = " << std::setw(25) <<  w.Tz << std::endl
+     << "Gx  = " << std::setw(25) <<  w.Gx << std::endl
+     << "Gy  = " << std::setw(25) <<  w.Gy << std::endl
+     << "Gz  = " << std::setw(25) <<  w.Gz << std::endl
+     << "Fx  = " << std::setw(25) <<  w.Fx << std::endl
+     << "Fy  = " << std::setw(25) <<  w.Fy << std::endl
+     << "Fz  = " << std::setw(25) <<  w.Fz << std::endl;
   return os;
 }
 
 } // namespace bicycle
+

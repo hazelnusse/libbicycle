@@ -16,7 +16,12 @@ using ::Eigen::PermutationMatrix;
 using ::Eigen::Stride;
 using ::Eigen::Unaligned;
 
+/** Dynamically sized column vector of type double
+ */
 typedef Eigen::Matrix<double, Eigen::Dynamic, 1> Vector;
+
+/** Dynamically sized matrix of type double
+ */
 typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> Matrix;
 
 /** A class representing a dynamic model of a bicycle.
@@ -188,7 +193,7 @@ class Bicycle {
 
   /** Set exogenous inputs
    *
-   * \param[in] Vector of length 22 with the following ordering
+   * \param[in] r Vector of length 22 with the following ordering
    *
    * - Rear wheel axle torque
    * - Rear assembly torque about x direction

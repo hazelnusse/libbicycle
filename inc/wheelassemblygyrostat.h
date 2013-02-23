@@ -19,11 +19,11 @@ namespace bicycle {
  * */
 class WheelAssemblyGyrostat {
  public:
-   /** Default constructor.
-    *
-    * All values are zero-initialized by default.
-    */
-   WheelAssemblyGyrostat();
+  /** Default constructor.
+   *
+   * All values are zero-initialized by default.
+   */
+  WheelAssemblyGyrostat();
 
   /** Stream insertion operator.
    *
@@ -32,35 +32,34 @@ class WheelAssemblyGyrostat {
    *
    * Prints the parameters.
    */
-   friend std::ostream & operator<<(std::ostream & os,
-                                    const WheelAssemblyGyrostat & w);
+  friend std::ostream & operator<<(std::ostream & os,
+                                   const bicycle::WheelAssemblyGyrostat & w);
 
-   double Ixx, /**< Gyrostat total central moment of inertia relative to x direction */
-          Iyy, /**< Gyrostat total central moment of inertia relative to y direction */
-          Izz, /**< Gyrostat total central moment of inertia relative to z direction */
-          Ixz, /**< Gyrostat total central product of inertia relative to x and z directions */
-          J,   /**< Gyrostat rotor moment of inertia relative to spin axis */
-          m,   /**< Gyrostat total mass */
-          R,   /**< Rotor major radius */
-          r,   /**< Rotor minor radius */
-          a,   /**< Gyrotstat position center of mass from rotor center relative to x direction */
-          b,   /**< Gyrotstat position center of mass from rotor center relative to z direction */
-          c;   /**< Steer axis location from rotor center relative to x direction */
 
- private:
-  friend class Bicycle; /**< So Bicycle can access forces/torques */
-  double  Tw,  /**< Torque applied to rotor from carrier about axle axis  */
-          Tx,  /**< Torque applied to carrier about x direction */
-          Ty,  /**< Torque applied to carrier about y direction */
-          Tz,  /**< Torque applied to carrier about z direction */
-          Gx,  /**< Contact force applied to rotor in x direction */
-          Gy,  /**< Contact force applied to rotor in y direction */
-          Gz,  /**< Contact force applied to rotor in z direction */
-          Fx,  /**< Force applied to gyrostat mass center in x direction */
-          Fy,  /**< Force applied to gyrostat mass center in y direction */
-          Fz;  /**< Force applied to gyrostat mass center in z direction */
+  double Ixx, /**< Gyrostat total central moment of inertia relative to x direction */
+         Iyy, /**< Gyrostat total central moment of inertia relative to y direction */
+         Izz, /**< Gyrostat total central moment of inertia relative to z direction */
+         Ixz, /**< Gyrostat total central product of inertia relative to x and z directions */
+         J,   /**< Gyrostat rotor moment of inertia relative to spin axis */
+         m,   /**< Gyrostat total mass */
+         R,   /**< Rotor major radius */
+         r,   /**< Rotor minor radius */
+         a,   /**< Gyrotstat position center of mass from rotor center relative to x direction */
+         b,   /**< Gyrotstat position center of mass from rotor center relative to z direction */
+         c,   /**< Steer axis location from rotor center relative to x direction */
+         Tw,  /**< Torque applied to rotor from carrier about axle axis  */
+         Tx,  /**< Torque applied to carrier about x direction */
+         Ty,  /**< Torque applied to carrier about y direction */
+         Tz,  /**< Torque applied to carrier about z direction */
+         Gx,  /**< Contact force applied to rotor in x direction */
+         Gy,  /**< Contact force applied to rotor in y direction */
+         Gz,  /**< Contact force applied to rotor in z direction */
+         Fx,  /**< Force applied to gyrostat mass center in x direction */
+         Fy,  /**< Force applied to gyrostat mass center in y direction */
+         Fz;  /**< Force applied to gyrostat mass center in z direction */
 };
 
 } // namespace bicycle
 
 #endif
+

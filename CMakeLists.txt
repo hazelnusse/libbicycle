@@ -73,5 +73,9 @@ if (BICYCLE_BUILD_PYTHON_EXTENSION_MODULES)
   find_package(PythonLibs 3.2 REQUIRED)  # I am using the 3.2 C API
   find_package(PythonInterp 3.2 REQUIRED)# I am using the 3.2 C API
   find_package(NumPy 1.8 REQUIRED)       # I am using the new NumPy API
+  # Set a few variables used by the FindBoost.cmake script
+  set(Boost_USE_MULTITHREADED     OFF)
+  set(Boost_USE_STATIC_RUNTIME    OFF)
+  find_package(Boost 1.52.0 COMPONENTS python)
   add_subdirectory(python_wrapper)
 endif()
