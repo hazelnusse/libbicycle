@@ -78,18 +78,6 @@ class Bicycle {
    */
   Bicycle();
 
-  /** Set bicycle state.
-   *
-   * \param[in] x The state to set the bicycle to, with the following ordering:
-   *
-   * - Generalized coordinates (Vector of 8 doubles)
-   * - Generalized speeds (Vector of 12 doubles)
-   *
-   * No checking is performed to determine if the assigned state satisfies the
-   * configuration or velocity constraints.
-   */
-  void set_state(const Vector & x);
-
   /** Set i-th state to xi.
    *
    * \param[in] i Index of state to set.
@@ -145,9 +133,12 @@ class Bicycle {
    */
   void set_coordinate(int i, double qi);
 
-  /** Set speeds.
+  /** Set i-th speed to ui.
    *
-   * \param[in] u Vector of length 12 with the following ordering
+   * \param[in] i Index of speed to set.
+   * \param[in] ui Value assigned to speed i.
+   *
+   * The 12 speeds are organzied as follows
    *
    * - Rear assembly yaw angle rate \f$\dot{q}_0\f$
    * - Rear assembly roll angle rate \f$\dot{q}_1\f$
@@ -169,16 +160,9 @@ class Bicycle {
    * the dependent speeds is yaw rate \f$\dot{q}_0\f$, pitch rate
    * \f$\dot{q}_2\f$, and front wheel rate \f$\dot{q}_5\f$.
    */
-  void set_speeds(const Vector & u);
-
-  /** Set i-th speed to ui.
-   *
-   * \param[in] i Index of speed to set.
-   * \param[in] ui Value assigned to speed i.
-   */
   void set_speed(int i, double ui);
 
-  /** Return i-th speed
+  /** Get the i-th generalized speed
    *
    */
   double speed(int i) const;

@@ -11,3 +11,7 @@ set_target_properties(whipple_ext PROPERTIES PREFIX "")
 add_library(wheelassemblygyrostat_ext wheelassemblygyrostat_ext.cc)
 target_link_libraries(wheelassemblygyrostat_ext bicycle ${Boost_LIBRARIES})
 set_target_properties(wheelassemblygyrostat_ext PROPERTIES PREFIX "")
+
+add_library(bicycle_ext bicycle_ext.cc)
+target_link_libraries(bicycle_ext bicycle ${Boost_LIBRARIES})
+set_target_properties(bicycle_ext PROPERTIES PREFIX "")

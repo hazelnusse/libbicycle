@@ -24,11 +24,6 @@ Bicycle::Bicycle()
   update_permutations();
 }
 
-void Bicycle::set_state(const Vector & x)
-{
-  state_ = x;
-}
-
 void Bicycle::set_coordinates(const Vector & q)
 {
   state_.block<n, 1>(0, 0) = q;
@@ -42,11 +37,6 @@ Vector Bicycle::coordinates() const
 double Bicycle::coordinate(int i) const
 {
   return state_[i];
-}
-
-void Bicycle::set_speeds(const Vector & u)
-{
-  state_.block<o, 1>(n, 0) = u;
 }
 
 Vector Bicycle::speeds() const
