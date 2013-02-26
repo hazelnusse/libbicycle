@@ -2,9 +2,14 @@
 #define BICYCLE_H
 #include <iostream>
 #include <set>
+#include <utility>
 #include <Eigen/Dense>
 #include "wheelassemblygyrostat.h"
 #include "whipple.h"
+
+#ifdef WRAP_PYTHON
+#include <Python.h>
+#endif
 
 namespace bicycle {
 
@@ -357,18 +362,18 @@ class Bicycle {
    * \returns a 20 x 20 matrix of dq/dt and du/dt coefficients
    */
   Matrix mass_matrix_full() const;
+  
+  /** Form linearized input coefficient matrix
+   *
+   * \returns a 20 x 22 matrix
+   */
+  Matrix input_matrix() const { return B_u(); }
 
   /** Form linearized state matrix
    *
    * \returns a 20 x 16 matrix of dq_i/dt and du_i/dt coefficients
    */
   Matrix independent_state_matrix() const;
-
-  /** Linearized state space matrix
-   *
-   * \returns 16 x 16 matrix associated with independent coordinates and speeds
-   */
-  Matrix system_dynamics_matrix() const;
 
   /** State derivatives
    *
@@ -475,6 +480,16 @@ class Bicycle {
   Matrix P_q_, P_u_;           // Permutation matrices
   // Camera related variables
   double azimuth, elevation, twist, cam_x, cam_y, cam_z;
+
+#if WRAP_PYTHON
+ public:
+  void solve_configuration_constraint_and_set_state_python();
+  void solve_velocity_constraints_and_set_state_python();
+  void mass_matrix_full_python(PyObject * matrix_out) const;
+  void independent_state_matrix_python(PyObject * matrix_out) const;
+  void input_matrix_python(PyObject * matrix_out) const;
+#endif
+
 };
 
 } // namespace bicycle

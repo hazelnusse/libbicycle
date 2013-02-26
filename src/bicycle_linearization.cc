@@ -187,7 +187,7 @@ Matrix Bicycle::mass_matrix_full() const
 
 Matrix Bicycle::independent_state_matrix() const
 {
-  Matrix mat(n + o, n + o - l - m);
+  Matrix mat(n + o, n - l + o - m);
   
   mat.block<n, n - l>(0, 0) = (A_qq() + A_qu() * C_1()) * C_0();
 
@@ -204,19 +204,6 @@ Matrix Bicycle::independent_state_matrix() const
   return mat;
 }
 
-Matrix Bicycle::system_dynamics_matrix() const
-{
-  Matrix M_full = mass_matrix_full();
-  Matrix A_full = independent_state_matrix();
-  FullPivHouseholderQR<Matrix> dec;
-  dec.compute(M_full);
-  Matrix A = dec.solve(A_full);
-  Matrix P_prime_transpose = Matrix::Zero(n - l + o - m, o + n);
-  P_prime_transpose.block<n - l, n>(0, 0) = P_qi().transpose();
-  P_prime_transpose.block<o - m, o>(n - l, n) = P_ui().transpose();
-  return P_prime_transpose * A;
-}
-  
 Matrix Bicycle::C_0() const
 {
   // [I_{n x n} - P_{qd}*(\nabla_q f_c * P_{qd})^{-1} \nabla_q f_c] * P_{qi}
