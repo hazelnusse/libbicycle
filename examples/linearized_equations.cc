@@ -31,8 +31,15 @@ int main()
   r[21] = 9.81;
   b.set_inputs(r);
   std::cout.precision(16);
-  for (int i = 0; i < 11; ++i) { // iterate over all speeds in Meijaard et al.
-    b.set_speed(4, -i/w.rR);
+
+  std::vector<double> speeds(14); // speeds 0,1, .., 10, v_d, v_w, v_c
+  std::iota(speeds.data(), speeds.data() + 11, 0.0);
+  speeds[11] = 0.68428307889246;
+  speeds[12] = 4.29238253634111;
+  speeds[13] = 6.02426201538837;
+
+  for (int i = 0; i < 14; ++i) { // iterate over all speeds in Meijaard et al.
+    b.set_speed(4, -speeds[i]/w.rR);
     b.solve_velocity_constraints_and_set_state();
 
     Matrix A_full = b.mass_matrix_full()
@@ -49,8 +56,9 @@ int main()
     A_min(3, 2) = A_full(11, 7);
     A_min(3, 3) = A_full(11, 8);
 
-    std::cout << "v = " << i << ": "
+    std::cout << "v = " << speeds[i] << ": "
       << A_min.eigenvalues().transpose() << std::endl;
   } // for i
+
 } // main()
 
