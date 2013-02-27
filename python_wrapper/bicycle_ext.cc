@@ -16,9 +16,7 @@ using bicycle::WheelAssemblyGyrostat;
 
 void Bicycle::solve_configuration_constraint_and_set_state_python()
 {
-  auto res = solve_configuration_constraint_and_set_state();
-  std::cout << "Iterations: " << res.first << std::endl;
-  std::cout << "f_c : " << res.second << std::endl;
+  solve_configuration_constraint_and_set_state();
 }
 
 void Bicycle::solve_velocity_constraints_and_set_state_python()
