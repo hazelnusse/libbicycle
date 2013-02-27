@@ -13,5 +13,5 @@ if (BICYCLE_BUILD_TESTS)
 endif()
 
 install(TARGETS bicycle
-        LIBRARY DESTINATION lib/bicycle
-        ARCHIVE DESTINATION lib/bicycle)
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib)

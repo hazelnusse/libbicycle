@@ -3,6 +3,7 @@
 #include <utility>
 #include <boost/python.hpp>
 #define NPY_NO_DEPRECATED_API 8
+#define NO_IMPORT_ARRAY
 #include <numpy/arrayobject.h>
 
 #include "bicycle.h"
