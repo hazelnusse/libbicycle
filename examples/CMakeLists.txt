@@ -9,5 +9,9 @@ target_link_libraries(dependent_speeds bicycle)
 add_executable(linearized_equations linearized_equations.cc)
 target_link_libraries(linearized_equations bicycle)
 
+add_executable(state_derivatives state_derivatives.cc)
+target_link_libraries(state_derivatives bicycle)
+
 add_executable(stream_output stream_output.cc)
 target_link_libraries(stream_output bicycle)
+
