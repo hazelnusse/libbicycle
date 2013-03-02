@@ -192,22 +192,42 @@ bool Bicycle::is_dependent_index(int i) const
 
 Vector Bicycle::state_derivatives() const
 {
-  Vector dxdt(20);
-  f_1(dxdt.data()); // set coordinate time derivatives to f1
-  dxdt.block<n, 1>(0, 0) *= -1.0;
 
-  Matrix cm(m, o);
-  f_v_du(cm.data());
-  Matrix mm(o, o);
-  gif_dud(mm.data()); // populate mass matrix
-  mm = P_u_.transpose() * mm;
-  Matrix mm_c(o - m, o);
-  mm_c = mm.block<o - m, o>(0, 0)
-            + Bd_inverse_Bi().transpose() * mm.block<m, o>(o - m, 0);
-  mm.block<m, o>(0, 0) = cm;
-  mm.block<o - m, o>(m, 0) = mm_c;
+  Matrix mm = Matrix::Identity(n + o, n + o); // upper left block is Identity
+  Vector forcing(n + o);
+  const Matrix C = Bd_inverse_Bi().transpose();
 
-  return dxdt;
+  // Right hand side of kinematic differential equations
+  f_1(forcing.data());
+  forcing.block<n, 1>(0, 0) *= -1.0;
+
+  // Portion of mass matrix associated with acceleration constraints
+  Matrix B(m, o);
+  f_v_du(B.data());
+  mm.block<m, o>(n, n) = B;
+
+  // Portion of forcing vector associated with acceleration constraints
+  forcing.block<m, 1>(n, 0) = f_v_dudt() * state_.block<o, 1>(n, 0);
+
+  // Portion of mass matrix associated with dynamic equations
+  Matrix mm_d(o, o);
+  gif_dud(mm_d.data());
+  mm_d = P_u_.transpose() * mm_d;  // reorder rows: independent then dependent
+  mm.block<o - m, o>(n + m, n) = mm_d.block<o - m, o>(0, 0) +
+                             C * mm_d.block<m, o>(o - m, 0); 
+            
+                  
+
+  // Portion of forcing vector associated with dynamic equations
+  Vector gif_unconstrained(o);
+  gif_ud_zero(gif_unconstrained.data());
+  gif_unconstrained = P_u_.transpose() * gif_unconstrained; // reorder rows
+  forcing.block<o - m, 1>(n + m, 0) = gif_unconstrained.block<o - m, 1>(0, 0) +
+                                 C * gif_unconstrained.block<m, 1>(o - m, 0);
+
+  // TODO: do more efficiently since mm is block diagonal (8x8 upper left),
+  // (12x12 lower right)
+  return mm.fullPivHouseholderQr().solve(forcing);
 }
 
 Matrix Bicycle::f_v_dudt() const
