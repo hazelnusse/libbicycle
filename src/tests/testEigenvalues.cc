@@ -80,3 +80,4 @@ TEST(UprightSteadyForwardCruise, BenchmarkEigenvalues)
     }
   }
 }
+

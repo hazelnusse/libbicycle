@@ -207,7 +207,9 @@ Vector Bicycle::state_derivatives() const
   mm.block<m, o>(n, n) = B;
 
   // Portion of forcing vector associated with acceleration constraints
-  forcing.block<m, 1>(n, 0) = f_v_dudt() * state_.block<o, 1>(n, 0);
+  Matrix B_dot(m, o);
+  f_v_dudt(B_dot.data());
+  forcing.block<m, 1>(n, 0) = B_dot * state_.block<o, 1>(n, 0);
 
   // Portion of mass matrix associated with dynamic equations
   Matrix mm_d(o, o);
@@ -228,20 +230,6 @@ Vector Bicycle::state_derivatives() const
   // TODO: do more efficiently since mm is block diagonal (8x8 upper left),
   // (12x12 lower right)
   return mm.fullPivHouseholderQr().solve(forcing);
-}
-
-Matrix Bicycle::f_v_dudt() const
-{
-  Matrix Bdot = Matrix::Zero(m, o);
-  Vector fvdudq(m * o * n_min);
-  f_v_dudq(fvdudq.data());
-  for (int i = 0; i < 3; ++i) {
-      double ui = state_[n + i + 1];  // lean rate, pitch rate, steer rate
-      Bdot += Map<Matrix,
-                  Unaligned,
-                  Stride<m * n_min, n_min>>(fvdudq.data() + i, m, o) * ui;
-  }
-  return Bdot;
 }
 
 } // namespace bicycle

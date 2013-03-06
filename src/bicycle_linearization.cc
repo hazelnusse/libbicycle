@@ -77,7 +77,9 @@ Matrix Bicycle::A_uuc() const
 {
   // - \nabla_u f_a
   // This is true even when du/dt != 0
-  return -f_v_dudt();
+  Matrix B_dot(m, o);
+  f_v_dudt(B_dot.data());
+  return -B_dot;
 }
 
 Matrix Bicycle::A_uqd() const

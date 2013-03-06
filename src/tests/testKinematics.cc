@@ -1,7 +1,9 @@
 #include <cmath>
+#include <Eigen/Dense>
 #include "bicycle.h"
 #include "whipple.h"
 #include "gtest/gtest.h"
+#include "benchmark_steady_turns.h"
 
 TEST(KinematicsTest, LambdaEqualsZero)
 {
@@ -105,4 +107,34 @@ TEST(KinematicsTest, BenchmarkMassCenterLocations)
   r = b.rear_parameters(); f = b.front_parameters();
   EXPECT_DOUBLE_EQ(w.mR + w.mB, r.m);
   EXPECT_DOUBLE_EQ(w.mF + w.mH, f.m);
+}
+
+TEST(KinematicsTest, BasuMandalKinematicsTest)
+{
+  using ::bicycle::Whipple; using ::bicycle::Bicycle;
+  using ::Eigen::Map; using ::Eigen::Matrix;
+  Whipple w;
+  Bicycle b;
+  b.set_parameters(w);
+  b.set_coordinates_basu_mandal(Map<Matrix<double, 9, 1>>(q));
+  b.solve_configuration_constraint_and_set_state(1e-16);
+  b.set_speeds_basu_mandal(Map<Matrix<double, 9, 1>>(q_dot));
+  b.set_dependent_speeds({0, 2, 4});  // yaw, pitch, rear wheel rates dependent
+  b.solve_velocity_constraints_and_set_state();
+
+  EXPECT_DOUBLE_EQ(b.coordinate(0), -q[3]);
+  EXPECT_DOUBLE_EQ(b.coordinate(1), M_PI/2.0 - q[4]);
+  EXPECT_NEAR(b.coordinate(2), M_PI - q[5] + b.reference_pitch(), 1e-13);
+  EXPECT_DOUBLE_EQ(b.coordinate(3), - q[6]);
+  EXPECT_DOUBLE_EQ(b.coordinate(4), - q[7]);
+  EXPECT_DOUBLE_EQ(b.coordinate(5), - q[8]);
+  double z[3], xy[2];
+  z[0] = cos(b.coordinate(1));
+  z[1] = sqrt(pow(z[0], 2));
+  z[2] = b.rear_parameters().R*z[0]*sin(b.coordinate(1));
+  xy[0] = (q[0]*z[1] + z[2]*sin(b.coordinate(0)))/z[1];
+  xy[1] = (q[1]*z[1] - z[2]*cos(b.coordinate(0)))/z[1];
+  EXPECT_DOUBLE_EQ(b.coordinate(6), xy[0]);
+  EXPECT_DOUBLE_EQ(b.coordinate(7), xy[1]);
+
 }

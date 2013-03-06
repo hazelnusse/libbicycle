@@ -15,7 +15,7 @@
 # tire contact force model can be added.  In the former case, the model has 3
 # degrees of freedom; in the latter case, it has 7 degrees of freedom.
 
-from sympy import symbols, zeros, pi, S, Matrix
+from sympy import symbols, zeros, pi, S, Matrix, solve
 from sympy.physics.mechanics import *
 import numpy as np
 Vector.simp = False
@@ -178,8 +178,21 @@ def derivation():
     ud = [ui.diff(t) for ui in u]
     ud_zero_dict = {udi:0 for udi in ud}
     qd_u_dict = {qdi : ui for qdi, ui in zip(qd[:6], u[:6])}
-    steady_no_slip = {u[1]:0, u[2]:0, u[3]:0, u[6]:0, u[7]:0, u[8]:0, u[9]:0,
-                      u[10]:0, u[11]:0}
+    steady = {u[1]:0, u[2]:0, u[3]:0}
+    no_slip = {ui:0 for ui in u[6:]}
+    steady_no_slip = steady.copy()
+    steady_no_slip.update(no_slip)
+
+    # Generalized inertia forces have centripetal and coriolis portions which
+    # are useful to be able to identify.  Each term in general takes the form
+    # of f(q) * u_i * u_j.
+    cross_terms = []
+    unique = set([])
+    for ui in u:
+        for uj in u:
+            if (ui*uj not in unique):
+                unique.add(ui * uj)
+                cross_terms.append((ui, uj))
 
     ## Applied forces and torques
     #
@@ -345,6 +358,18 @@ def derivation():
     NO = gc_r.locatenew('NO', -q[6]*N.x - q[7]*N.y)    # Inertial origin
     N_ogl    = opengl_transformation_matrix(C, cam_origin, N, NO)
 
+    # Coordinates of rear wheel center for comparison to Basu-Mandal steady
+    # turning results
+    x_bm, y_bm, z_bm = symbols('x_bm y_bm z_bm')
+    x_dot_bm, y_dot_bm, z_dot_bm = symbols('x_dot_bm y_dot_bm z_dot_bm')
+    xyz_eqns = [x_bm - (wc_r.pos_from(NO) & N.x), 
+                y_bm - (wc_r.pos_from(NO) & N.y),
+                z_bm - (wc_r.pos_from(NO) & N.z)]
+    soln = solve(xyz_eqns[:2], [q[6], q[7]])
+    q6q7_from_bm = np.array([soln[q[6]], soln[q[7]]], dtype=object)
+    wc_r_v_N = wc_r.vel(N)
+    xyz_dot_bm = np.array([wc_r_v_N & uv for uv in N], dtype=object)
+
     print("Forming kinematic ODE's...")
     f_1 = np.zeros((8,), dtype=object)
     f_1_dq = np.zeros((8, 8), dtype=object)
@@ -374,7 +399,8 @@ def derivation():
     f_v = np.zeros((3,), dtype=object)
     f_v_du = np.zeros((3, 12), dtype=object)
     f_v_dudq = np.zeros((3, 12, 3), dtype=object)
-    f_v_dudqdq = np.zeros((3, 12, 3, 3), dtype=object)
+    f_v_dudt = np.zeros((3, 12), dtype=object)
+    f_v_dudtdq = np.zeros((3, 12, 3), dtype=object)
 
     for i, uv in enumerate(F):
         f_v[i] = f_v_vec & uv
@@ -382,10 +408,10 @@ def derivation():
             assert(f_v[i].diff(qdi) == 0)
         for j, uj in enumerate(u):
             f_v_du[i, j] = f_v[i].diff(uj)
+            f_v_dudt[i, j] = f_v_du[i, j].diff(t).subs(qd_u_dict)
             for k, qk in enumerate(q_min):
                 f_v_dudq[i, j, k] = f_v_du[i, j].diff(qk)
-                for l, ql in enumerate(q_min):
-                    f_v_dudqdq[i, j, k, l] = f_v_dudq[i, j, k].diff(ql)
+                f_v_dudtdq[i, j, k] = f_v_dudt[i, j].diff(qk)
 
     print("Forming rear assembly partial angular velocities...")
     R_N_pav, RW_N_pav, RW_R_pav = partial_velocity([R.ang_vel_in(N),
@@ -415,6 +441,35 @@ def derivation():
     I_r = inertia(R, rear.Ixx, rear.Iyy, rear.Izz, 0, 0, rear.Ixz)
     I_f = inertia(F, front.Ixx, front.Iyy, front.Izz, 0, 0, front.Ixz)
 
+    # Form kinetic energy of rear and front assemblies
+    print("Forming kinetic energy expressions")
+    ke_rear_t = rear.m / 2.0 * (mc_r.vel(N).magnitude() ** 2)
+    ke_rear_a = (((R.ang_vel_in(N) & (I_r & R.ang_vel_in(N)))
+                  + rear.J * (RW.ang_vel_in(R).magnitude() ** 2)) / 2.0
+                 + rear.J * (R.ang_vel_in(N) & RW.ang_vel_in(R)))
+
+    ke_front_t = front.m / 2.0 * (mc_f.vel(N).magnitude() ** 2)
+    ke_front_a = (((F.ang_vel_in(N) & (I_f & F.ang_vel_in(N)))
+                   + front.J * (FW.ang_vel_in(F).magnitude() ** 2)) / 2.0
+                  + front.J * (F.ang_vel_in(N) & FW.ang_vel_in(F)))
+
+    pe_rear = -rear.m * g * (mc_r.pos_from(gc_r) & Y.z)
+    pe_front = -front.m * g * (mc_f.pos_from(gc_f) & Y.z)
+
+    ke_pe = np.array([ke_rear_t, ke_rear_a, ke_front_t, ke_front_a, pe_rear,
+        pe_front])
+
+    print("Computing rear and front wheel turn radii...")
+    # gc_r_to_gc_f = R_path_r * wyf_y_r - R_path_f * wyf_y_f
+    A = zeros((2, 2))
+    A[0, 0] = (wyf_y_r & Y.x)
+    A[0, 1] = (-wyf_y_f & Y.x)
+    A[1, 0] = (wyf_y_r & Y.y)
+    A[1, 1] = (-wyf_y_f & Y.y)
+    rhs = Matrix([gc_f.pos_from(gc_r) & Y.x, gc_f.pos_from(gc_r) & Y.y])
+    path_radii = np.array((A.inverse_ADJ() * rhs).transpose().tolist()[0],
+                          dtype=object)
+
     print("Computing generalized active forces and generalized inertia forces...")
     a_r = mc_r.acc(N)
     a_f = mc_f.acc(N)
@@ -435,6 +490,7 @@ def derivation():
     gif = np.zeros((len(u),), dtype=object)
     gif_ud_zero = np.zeros((len(u),), dtype=object)
     gif_ud_zero_steady = np.zeros((len(u),), dtype=object)
+    gif_ud_zero_steady_dudu = np.zeros((len(u), len(cross_terms)), dtype=object)
     gif_dud = np.zeros((len(u), len(u)), dtype=object)
     gif_dud_dq = np.zeros((len(u), len(u), len(q_min)), dtype=object)
     gif_ud_zero_dq = np.zeros((len(u), len(q_min)), dtype=object)
@@ -463,7 +519,12 @@ def derivation():
 
         # Coriolis and centripel terms of generalized inertia forces
         gif_ud_zero[i] = gif[i].subs(ud_zero_dict)
-        gif_ud_zero_steady[i] = gif_ud_zero[i].subs(steady_no_slip)
+        gif_ud_zero_steady[i] = gif_ud_zero[i].subs(steady)
+
+        for j, (ui, uj) in enumerate(cross_terms):
+            gif_ud_zero_steady_dudu[i, j] = gif_ud_zero_steady[i].diff(ui).diff(uj)
+            if ui == uj:
+                gif_ud_zero_steady_dudu[i, j] /= 2
 
         # Partial derivatives w.r.t. q
         for j, qj in enumerate(q_min):
@@ -482,6 +543,15 @@ def derivation():
             # linearization when du/dt != 0
             for k, qk in enumerate(q_min):
                 gif_dud_dq[i, j, k] = gif_dud[i, j].diff(qk)
+
+    # Identify non-zero columns
+    non_zero_columns = []
+    for j in range(len(cross_terms)):
+        if gif_ud_zero_steady_dudu[:, j].any() != 0:
+            non_zero_columns.append(j)
+
+    gif_ud_zero_steady_dudu = gif_ud_zero_steady_dudu[:, non_zero_columns]
+    cross_terms = np.array([ui*uj for ui, uj in cross_terms], dtype=object)[non_zero_columns]
 
     # Output code generation
     code = NumpyArrayOutput(['<cmath>', '"bicycle.h"'], namespaces=['std'])
@@ -506,6 +576,18 @@ def derivation():
     code.generate(sa_f_rel_gc_r, "Bicycle::front_steer_axis_point")
     code.generate(gc_f_rel_gc_r, "Bicycle::front_ground_contact_point")
 
+    print("Generating wheel path radii outputs...")
+    code.generate(path_radii, "Bicycle::path_radii")
+
+    print("Generating kinetic and potential energy outputs...")
+    code.generate(ke_pe, "Bicycle::ke_pe")
+
+    print("Generating Basu-Mandal rear wheel center coordinates...")
+    code.generate(q6q7_from_bm, "Bicycle::q6q7_from_bm")
+
+    print("Generating Basu-Mandal rear wheel center velocity...")
+    code.generate(xyz_dot_bm, "Bicycle::xyz_dot_bm")
+
     print("Generating configuration constraint (f_c) code...")
     code.generate(f_c, "Bicycle::f_c")
     print("Generating configuration constraint partial derivatives code" +
@@ -517,9 +599,12 @@ def derivation():
     print("Generating constraint coefficient Jacobian matrix " +
           "(f_v_dudq) code...")
     code.generate(f_v_dudq, "Bicycle::f_v_dudq")
-    print("Generating constraint coefficient Hessian matrix " +
-          "(f_v_dudqdq) code...")
-    code.generate(f_v_dudqdq, "Bicycle::f_v_dudqdq")
+    print("Generating constraint coefficient matrix " +
+          "time derivative (f_v_dudt) code...")
+    code.generate(f_v_dudt, "Bicycle::f_v_dudt")
+    print("Generating constraint coefficient Jacobian matrix " +
+          "time derivative (f_v_dudtdq) code...")
+    code.generate(f_v_dudtdq, "Bicycle::f_v_dudtdq")
 
     print("Generating kinematic differential equations (f_1, f_1_dq, f_1_du)")
     code.generate(f_1, "Bicycle::f_1")
@@ -534,6 +619,13 @@ def derivation():
     code.generate(gif_ud_zero, "Bicycle::gif_ud_zero")
     print("Generating steady coriolis/centripetal (gif_ud_zero_steady) code...")
     code.generate(gif_ud_zero_steady, "Bicycle::gif_ud_zero_steady")
+
+    print("Generating steady coriolis/centripetal (gif_ud_zero_steady_dudu) code...")
+    code.generate(gif_ud_zero_steady_dudu, "Bicycle::gif_ud_zero_steady_dudu")
+
+    print("Generating non-zero steady coriolis/centripetal (gif_ud_zero_steady_cross_terms) code...")
+    code.generate(cross_terms, "Bicycle::gif_ud_zero_steady_cross_terms")
+
     print("Generating partial derivatives of coriolis/centripetal " +
           "(gif_ud_zero_dq, gif_ud_zero_du) code...")
     code.generate(gif_ud_zero_dq, "Bicycle::gif_ud_zero_dq")

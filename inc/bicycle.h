@@ -111,6 +111,43 @@ class Bicycle {
    */
   void set_coordinates(const Vector & q);
 
+  /** Set coordinates following Basu-Mandal et al. 2007 definitions.
+   *
+   * \param[in] q Vector of length 9 with the following ordering:
+   *
+   * - Rear wheel center \f$x\f$
+   * - Rear wheel center \f$y\f$
+   * - Rear wheel center \f$z\f$
+   * - Yaw \f$\theta\f$
+   * - Lean \f$\psi\f$
+   * - Pitch \f$\phi\f$
+   * - Steer \f$\psi_f\f$
+   * - Rear wheel angle \f$\beta_r\f$
+   * - Front wheel angle \f$\beta_f\f$
+   */
+  void set_coordinates_basu_mandal(const Vector & q_bm);
+
+  /** Set coordinate time derivatives following Basu-Mandal et al. 2007 definitions.
+   *
+   * \param[in] q_dot Vector of length 9 with the following ordering:
+   *
+   * - Rear wheel center \f$\dot{x}\f$
+   * - Rear wheel center \f$\dot{y}\f$
+   * - Rear wheel center \f$\dot{z}\f$
+   * - Yaw \f$\dot{\theta}\f$
+   * - Lean \f$\dot{\psi}\f$
+   * - Pitch \f$\dot{\phi}\f$
+   * - Steer \f$\dot{\psi}_f\f$
+   * - Rear wheel angle \f$\dot{\beta}_r\f$
+   * - Front wheel angle \f$\dot{\beta}_f\f$
+   *
+   * Note that the Bicycle model uses a smaller number of speeds (6) than
+   * Basu-Mandal et al. does (9), so the velocity measure numbers of the rear
+   * wheel center in the inertial frame (\f$\dot{x}, \dot{y}, \dot{z}\f$) are
+   * not used because this information is redundant.
+   */
+  void set_speeds_basu_mandal(const Vector & q_dot_bm);
+
   /** Get coordinates
    *
    * \returns A Vector of length 8 with the following ordering:
@@ -383,7 +420,8 @@ class Bicycle {
   /** Position of points
    *
    * \returns a 7 x 3 matrix with the following seven points, all relative to
-   * the rear wheel contact point:
+   * the rear wheel contact point, expressed in the rear wheel yaw frame
+   * coordinates:
    *  - Rear wheel center
    *  - Rear assembly mass center
    *  - Rear assembly steer axis point
@@ -394,6 +432,12 @@ class Bicycle {
    *
    */
   Matrix points_of_interest() const;
+
+  /** Reference pitch angle.
+   *
+   * \returns pitch angle when bicycle has zero lean and steer.
+   */
+  double reference_pitch() const;
 
   // This is to ensure state has 128-bit alignment and hence vectorizable
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -414,11 +458,13 @@ class Bicycle {
   void front_mass_center_point(double ar[3]) const;
   void front_steer_axis_point(double ar[3]) const;
   void front_ground_contact_point(double ar[3]) const;
+  void q6q7_from_bm(double ar[2], double x_bm, double y_bm) const;
   void f_c(double ar[1]) const;
   void f_c_dq(double ar[n]) const;
   void f_v_du(double ar[m * o]) const;
   void f_v_dudq(double ar[m * o * n_min]) const;
-  void f_v_dudqdq(double ar[m * o * n_min * n_min]) const;
+  void f_v_dudt(double ar[36]) const;
+  void f_v_dudtdq(double ar[108]) const;
   void kinematic_odes_rhs(double ar[n]) const;
   void f_1(double ar[n]) const;
   void f_1_dq(double ar[n * n]) const;
@@ -433,10 +479,14 @@ class Bicycle {
   void gaf_min(double ar[o]) const;
   void gaf_dq(double ar[o * n_min]) const;
   void gaf_dr(double ar[o * s]) const;
+  void path_radii(double ar[2]) const;
+  void ke_pe(double ar[6]) const;
+  void xyz_dot_bm(double ar[3]) const;
+  void gif_ud_zero_steady_dudu(double ar[84]) const;
+  void gif_ud_zero_steady_cross_terms(double ar[7]) const;
 
   // Private member functions related to linearization of dynamic equations
   Matrix Bd_inverse_Bi() const;
-  Matrix f_v_dudt() const;
   Matrix f_v_dq() const;
   Matrix M_qq() const;
   Matrix M_uqc() const;

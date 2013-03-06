@@ -29,6 +29,30 @@ void Bicycle::set_coordinates(const Vector & q)
   state_.block<n, 1>(0, 0) = q;
 }
 
+void Bicycle::set_coordinates_basu_mandal(const Vector & q_bm)
+{
+  state_[0] = -q_bm[3];          // yaw
+  state_[1] = M_PI/2.0 - q_bm[4];// lean
+  state_[2] = M_PI - q_bm[5] + reference_pitch(); // pitch
+  state_[3] = -q_bm[6];          // steer
+  state_[4] = -q_bm[7];          // rear wheel angle
+  state_[5] = -q_bm[8];          // front wheel angle
+  // Calculate q[6] and q[7].
+  q6q7_from_bm(state_.data() + 6, q_bm[0], q_bm[1]);
+}
+
+void Bicycle::set_speeds_basu_mandal(const Vector & q_dot_bm)
+{
+  state_[8] = -q_dot_bm[3];          // yaw rate
+  state_[9] = -q_dot_bm[4];          // lean rate
+  state_[10] = -q_dot_bm[5];         // pitch rate
+  state_[11] = -q_dot_bm[6];         // steer rate
+  state_[12] = -q_dot_bm[7];         // rear wheel rate
+  state_[13] = -q_dot_bm[8];         // front wheel rate
+  state_[14] = state_[15] = state_[16] = state_[17] = state_[18] = state_[19] =
+    0.0;
+}
+
 Vector Bicycle::coordinates() const
 {
   return state_.block<n, 1>(0, 0);

@@ -16,4 +16,12 @@ Matrix Bicycle::points_of_interest() const
   return mat;
 }
 
+double Bicycle::reference_pitch() const
+{
+  Bicycle b;
+  b.set_parameters(rear_, front_, ls_, g_);
+  b.solve_configuration_constraint_and_set_state();
+  return b.coordinate(2);
+}
+
 } // namespace bicycle
