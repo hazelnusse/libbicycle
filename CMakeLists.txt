@@ -76,7 +76,7 @@ if (BICYCLE_BUILD_PYTHON_EXTENSION_MODULES)
   # Set a few variables used by the FindBoost.cmake script
   set(Boost_USE_MULTITHREADED     OFF)
   set(Boost_USE_STATIC_RUNTIME    OFF)
-  find_package(Boost 1.52.0 COMPONENTS python)
+  find_package(Boost 1.53.0 COMPONENTS python)
   add_definitions(-DWRAP_PYTHON)
   add_subdirectory(python_wrapper)
 endif()

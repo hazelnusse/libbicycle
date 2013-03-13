@@ -15,7 +15,7 @@ int main()
   b.solve_velocity_constraints_and_set_state();
   
   Vector r = Vector::Zero(22);
-  Vector cf = b.steady_constraint_forces();
+  Vector cf = b.steady_no_slip_constraint_forces();
   r[4] = cf[0];
   r[5] = cf[1];
   r[6] = cf[2];

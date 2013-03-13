@@ -203,6 +203,11 @@ class Bicycle {
    * \f$\dot{q}_2\f$, and front wheel rate \f$\dot{q}_5\f$.
    */
   void set_speed(int i, double ui);
+  
+  /* Set generalized speeds.
+   *
+   */
+  void set_speeds(const Vector & u);
 
   /** Get the i-th generalized speed
    *
@@ -311,9 +316,11 @@ class Bicycle {
   friend std::ostream & operator<<(std::ostream & os,
                                    const Bicycle & b);
 
-  /** Compute steady ground contact forces assuming \f$\dot{u}=0\f$.
+  /** Compute ground contact forces and steer torque under steady turning
+   * conditions and assuming no slip.
    *
-   * \pre State and parameters of bicycle are set.
+   * \pre State and parameters of bicycle are set, and the speeds associated
+   * with tire contact velocities are zero.
    *
    * \returns The constraint forces as a length 7 Vector with ordering:
    * - \f$G_{Rx}\f$
@@ -330,8 +337,20 @@ class Bicycle {
    * in the ground plane, z is perpendicular to the ground plane and points
    * downwards (to the half space opposite that which the bicycle is normally
    * in).
-   * */
-  Vector steady_constraint_forces() const;
+   */
+  Vector steady_no_slip_constraint_forces() const;
+
+  /** Contact forces assuming no slip.
+   *
+   * \pre State and parameters are set, input forces are applied.
+   *
+   * \returns The constraint forces acting at each contact point.
+   *
+   * Note that this doesn't assume that the motion is steady, i.e. this is for
+   * arbitrary motions.
+   *
+   */
+  Vector no_slip_contact_forces() const;
 
   /** Solve configuration constraint.
    *
@@ -412,6 +431,16 @@ class Bicycle {
    */
   Matrix independent_state_matrix() const;
 
+  /** Coordinate derivatives
+   *
+   */
+  Vector coordinate_derivatives() const;
+  
+  /** Speed derivatives
+   *
+   */
+  Vector speed_derivatives() const;
+
   /** State derivatives
    *
    */
@@ -476,7 +505,6 @@ class Bicycle {
   void gif_ud_zero_dq(double ar[o * n_min]) const;
   void gif_ud_zero_du(double ar[o * o]) const;
   void gaf(double ar[o]) const;
-  void gaf_min(double ar[o]) const;
   void gaf_dq(double ar[o * n_min]) const;
   void gaf_dr(double ar[o * s]) const;
   void path_radii(double ar[2]) const;

@@ -29,6 +29,11 @@ void Bicycle::set_coordinates(const Vector & q)
   state_.block<n, 1>(0, 0) = q;
 }
 
+void Bicycle::set_speeds(const Vector & u)
+{
+  state_.block<o, 1>(n, 0) = u;
+}
+
 void Bicycle::set_coordinates_basu_mandal(const Vector & q_bm)
 {
   state_[0] = -q_bm[3];          // yaw

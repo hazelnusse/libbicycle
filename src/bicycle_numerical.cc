@@ -4,24 +4,24 @@
 
 namespace bicycle {
 
-Vector Bicycle::steady_constraint_forces() const
+Vector Bicycle::steady_no_slip_constraint_forces() const
 {
-  Vector gif_steady(o);      // Generalized inertia forces
-  Matrix gaf_dr_full(o, s);  // Input coefficient matrix
-  gif_ud_zero(gif_steady.data());        // populate gif_steady
-  gaf_dr(gaf_dr_full.data());                   // populate gaf_dr_full
-  gif_steady = (P_u_.transpose() * gif_steady).eval();   // reorder rows
-  gaf_dr_full = (P_u_.transpose() * gaf_dr_full).eval(); // reorder rows
-
   const Matrix C = Bd_inverse_Bi().transpose(); // 9 by 3 constraint matrix
 
+  Vector gif_cc(o);                   // Generalized inertia (coriolis/centripetal)
+  gif_ud_zero_steady(gif_cc.data());         // populate gif_cc
+  gif_cc = P_u_.transpose() * gif_cc; // reorder rows
+  Vector gif_cc_constrained(o - m);
+  gif_cc_constrained = gif_cc.block<o - m, 1>(0, 0)    // indepedent rows
+                     + C * gif_cc.block<m, 1>(o - m, 0);   //  dependent rows
+
+  Matrix gaf_dr_full(o, s);           // Input coefficient matrix
+  gaf_dr(gaf_dr_full.data());         // populate gaf_dr_full
+  gaf_dr_full = P_u_.transpose() * gaf_dr_full; // reorder rows
   Matrix gaf_dr_full_constrained(o - m, s); 
   gaf_dr_full_constrained = gaf_dr_full.block<o - m, s>(0, 0)  // independent rows
                       + C * gaf_dr_full.block<m, s>(o - m, 0); //   dependent rows
 
-  Vector gif_steady_constrained(o - m);
-  gif_steady_constrained = gif_steady.block<o - m, 1>(0, 0)    // indepedent rows
-                     + C * gif_steady.block<m, 1>(o - m, 0);   //  dependent rows
 
   Matrix gaf_dr_c_constrained(o - m, 7);     // Columns associated with constraint forces
   gaf_dr_c_constrained << gaf_dr_full_constrained.col(4),    // rear longitudinal force
@@ -54,15 +54,22 @@ Vector Bicycle::steady_constraint_forces() const
   // contact point velocities and need to be used when solving for constraint
   // forces.  However, the first three equations come from the independent
   // speeds which may change depending on parameters or configuration.
-  // Therefor, it isn't safe to assume which of the first three equations we
+  // Therefore, it isn't safe to assume which of the first three equations we
   // need.  Instead of picking one, we can form a Jacobi SVD and do a least
   // squares solution.  This approach should be very numerically robust.
-  Vector rhs = -(gif_steady_constrained
+  Vector rhs = -(gif_cc_constrained
       + gaf_dr_a_constrained * all_inputs_except_constraint_forces());
 
   JacobiSVD<Matrix, ::Eigen::FullPivHouseholderQRPreconditioner>
     svd(gaf_dr_c_constrained, ::Eigen::ComputeFullU | ::Eigen::ComputeFullV);
   return svd.solve(rhs);
+}
+
+Vector Bicycle::no_slip_contact_forces() const
+{
+  // TODO: Implement me.
+  Vector cf(6);
+  return cf;
 }
 
 std::pair<int, double> Bicycle::solve_configuration_constraint_and_set_state(double ftol, int iter) {
@@ -190,46 +197,58 @@ bool Bicycle::is_dependent_index(int i) const
   return dependent_speeds_.count(i);
 }
 
-Vector Bicycle::state_derivatives() const
+Vector Bicycle::coordinate_derivatives() const
 {
+  Vector rhs(n);
+  f_1(rhs.data());
+  return -rhs;
+}
 
-  Matrix mm = Matrix::Identity(n + o, n + o); // upper left block is Identity
-  Vector forcing(n + o);
+Vector Bicycle::speed_derivatives() const
+{
   const Matrix C = Bd_inverse_Bi().transpose();
-
-  // Right hand side of kinematic differential equations
-  f_1(forcing.data());
-  forcing.block<n, 1>(0, 0) *= -1.0;
+  Matrix mm(o, o);
+  Vector forcing(o);
 
   // Portion of mass matrix associated with acceleration constraints
   Matrix B(m, o);
   f_v_du(B.data());
-  mm.block<m, o>(n, n) = B;
+  mm.block<m, o>(0, 0) = B;
 
   // Portion of forcing vector associated with acceleration constraints
   Matrix B_dot(m, o);
   f_v_dudt(B_dot.data());
-  forcing.block<m, 1>(n, 0) = B_dot * state_.block<o, 1>(n, 0);
-
+  forcing.block<m, 1>(0, 0) = -B_dot * state_.block<o, 1>(n, 0);
+  
   // Portion of mass matrix associated with dynamic equations
   Matrix mm_d(o, o);
   gif_dud(mm_d.data());
   mm_d = P_u_.transpose() * mm_d;  // reorder rows: independent then dependent
-  mm.block<o - m, o>(n + m, n) = mm_d.block<o - m, o>(0, 0) +
-                             C * mm_d.block<m, o>(o - m, 0); 
-            
-                  
+  mm.block<o - m, o>(m, 0) = mm_d.block<o - m, o>(0, 0) +
+                         C * mm_d.block<m, o>(o - m, 0); 
 
-  // Portion of forcing vector associated with dynamic equations
+  // Portion of forcing vector associated with coriolis/centripetal terms from  dynamic equations
   Vector gif_unconstrained(o);
   gif_ud_zero(gif_unconstrained.data());
   gif_unconstrained = P_u_.transpose() * gif_unconstrained; // reorder rows
-  forcing.block<o - m, 1>(n + m, 0) = gif_unconstrained.block<o - m, 1>(0, 0) +
-                                 C * gif_unconstrained.block<m, 1>(o - m, 0);
+  forcing.block<o - m, 1>(m, 0) = -(gif_unconstrained.block<o - m, 1>(0, 0) +
+                                C * gif_unconstrained.block<m, 1>(o - m, 0));
 
-  // TODO: do more efficiently since mm is block diagonal (8x8 upper left),
-  // (12x12 lower right)
+  // Portion of forcing vector associated with generalized active forces
+  Vector gaf_unconstrained(o);
+  gaf(gaf_unconstrained.data());
+  gaf_unconstrained = P_u_.transpose() * gaf_unconstrained; // reorder rows
+  forcing.block<o - m, 1>(m, 0) -= (gaf_unconstrained.block<o - m, 1>(0, 0) +
+                                C * gaf_unconstrained.block<m, 1>(o - m, 0));
+
   return mm.fullPivHouseholderQr().solve(forcing);
+}
+
+Vector Bicycle::state_derivatives() const
+{
+  Vector dxdt(o);
+  dxdt << coordinate_derivatives(), speed_derivatives();
+  return dxdt;
 }
 
 } // namespace bicycle

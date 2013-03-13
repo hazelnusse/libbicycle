@@ -53,7 +53,7 @@ void Bicycle::input_matrix_python(PyObject * matrix_out) const
 void set_steady_constraint_forces(Bicycle * b)
 {
   Vector r = Vector::Zero(22);
-  Vector cf = b->steady_constraint_forces();
+  Vector cf = b->steady_no_slip_constraint_forces();
   r[4] = cf[0];
   r[5] = cf[1];
   r[6] = cf[2];

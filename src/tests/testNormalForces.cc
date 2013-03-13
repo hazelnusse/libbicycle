@@ -11,7 +11,7 @@ TEST(NormalForcesTest, BenchmarkReferenceConfiguration)
   Whipple w;
   b.set_parameters(w);
   b.solve_configuration_constraint_and_set_state();
-  Vector cf = b.steady_constraint_forces();
+  Vector cf = b.steady_no_slip_constraint_forces();
 
   double rear_normal = -w.g*(w.w * w.mR + (w.w - w.xB) * w.mB + (w.w - w.xH) * w.mH)/w.w;
   double front_normal = -w.g*(w.xB * w.mB + w.xH * w.mH + w.w * w.mF)/w.w;
@@ -38,7 +38,7 @@ TEST(NormalForcesTest, VerticalSteerAxis)
   f.c = -0.5;      // distance to steer axis
   b.set_parameters(r, f, 0.0, 1.0);
   b.solve_configuration_constraint_and_set_state();
-  Vector cf = b.steady_constraint_forces();
+  Vector cf = b.steady_no_slip_constraint_forces();
   EXPECT_DOUBLE_EQ(cf[2], -1.0);
   EXPECT_DOUBLE_EQ(cf[5], -1.0);
   EXPECT_NEAR(0.0, cf[0], 1e-14);     // Longitudinal force
@@ -50,7 +50,7 @@ TEST(NormalForcesTest, VerticalSteerAxis)
   f.b = -0.25;
   b.set_parameters(r, f, 0.0, 1.0);
   b.solve_configuration_constraint_and_set_state();
-  cf = b.steady_constraint_forces();
+  cf = b.steady_no_slip_constraint_forces();
   EXPECT_DOUBLE_EQ(cf[2], -1.0);
   EXPECT_DOUBLE_EQ(cf[5], -1.0);
   EXPECT_NEAR(0.0, cf[0], 1e-14);     // Longitudinal force
@@ -64,7 +64,7 @@ TEST(NormalForcesTest, VerticalSteerAxis)
   f.a = -.25;
   b.set_parameters(r, f, 0.0, 1.0);
   b.solve_configuration_constraint_and_set_state();
-  cf = b.steady_constraint_forces();
+  cf = b.steady_no_slip_constraint_forces();
   EXPECT_DOUBLE_EQ(cf[2], -1.0);
   EXPECT_DOUBLE_EQ(cf[5], -1.0);
   EXPECT_NEAR(0.0, cf[0], 1e-14);     // Longitudinal force
@@ -81,7 +81,7 @@ TEST(NormalForcesTest, VerticalSteerAxis)
   f.c = -0.5;
   b.set_parameters(r, f, ls, 1.0);
   b.solve_configuration_constraint_and_set_state();
-  cf = b.steady_constraint_forces();
+  cf = b.steady_no_slip_constraint_forces();
   EXPECT_DOUBLE_EQ(cf[2], -1.0);
   EXPECT_DOUBLE_EQ(cf[5], -1.0);
   EXPECT_NEAR(0.0, cf[0], 1e-14);     // Longitudinal force
@@ -98,7 +98,7 @@ TEST(NormalForcesTest, VerticalSteerAxis)
   f.c = -0.5;
   b.set_parameters(r, f, ls, 1.0);
   b.solve_configuration_constraint_and_set_state();
-  cf = b.steady_constraint_forces();
+  cf = b.steady_no_slip_constraint_forces();
   EXPECT_DOUBLE_EQ(cf[2], -1.0);
   EXPECT_DOUBLE_EQ(cf[5], -1.0);
   EXPECT_NEAR(0.0, cf[0], 1e-14);     // Longitudinal force

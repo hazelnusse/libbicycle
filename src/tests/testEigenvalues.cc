@@ -3,6 +3,7 @@
 #include <Eigen/Dense>
 #include "gtest/gtest.h"
 #include "benchmark_eigenvalues.h"
+#include "benchmark_steady_turns.h"
 #include "bicycle.h"
 #include "wheelassemblygyrostat.h"
 #include "whipple.h"
@@ -33,7 +34,7 @@ TEST(UprightSteadyForwardCruise, BenchmarkEigenvalues)
   bicycle::Whipple w;
   b.set_parameters(w);
   b.solve_configuration_constraint_and_set_state();
-  bicycle::Vector cf = b.steady_constraint_forces();
+  bicycle::Vector cf = b.steady_no_slip_constraint_forces();
   VectorXd r = VectorXd::Zero(22);
   r[4] = cf[0];
   r[5] = cf[1];
@@ -81,3 +82,28 @@ TEST(UprightSteadyForwardCruise, BenchmarkEigenvalues)
   }
 }
 
+TEST(HandsFreeTurns, BenchmarkEigenvalues)
+{
+  // TODO: Finish implementing checks of all Basu-Mandal steady turning
+  // results.
+  bicycle::Bicycle b;
+  bicycle::Whipple w;
+  b.set_parameters(w);
+  b.set_coordinates_basu_mandal(Map<Matrix<double, 9, 1>>(q));
+  b.solve_configuration_constraint_and_set_state();
+  b.set_dependent_speeds({0, 2, 4});  // yaw, pitch, rear wheel rates dependent
+  b.set_speeds_basu_mandal(Map<Matrix<double, 9, 1>>(q_dot));
+  b.solve_velocity_constraints_and_set_state();
+  bicycle::Vector cf = b.steady_no_slip_constraint_forces();
+  VectorXd r = VectorXd::Zero(22);
+  r[4] = cf[0];
+  r[5] = cf[1];
+  r[6] = cf[2];
+  r[14] = cf[3];
+  r[15] = cf[4];
+  r[16] = cf[5];
+  r[20] = cf[6];
+  r[21] = 9.81;
+  b.set_inputs(r);
+
+}
