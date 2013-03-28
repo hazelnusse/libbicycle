@@ -25,3 +25,4 @@ double Bicycle::reference_pitch() const
 }
 
 } // namespace bicycle
+

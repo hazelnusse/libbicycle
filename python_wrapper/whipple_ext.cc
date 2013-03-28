@@ -35,3 +35,4 @@ BOOST_PYTHON_MODULE(whipple_ext)
       .def_readwrite("tR", &bicycle::Whipple::tR)
       .def_readwrite("tF", &bicycle::Whipple::tF);
 }
+

@@ -203,7 +203,7 @@ class Bicycle {
    * \f$\dot{q}_2\f$, and front wheel rate \f$\dot{q}_5\f$.
    */
   void set_speed(int i, double ui);
-  
+
   /* Set generalized speeds.
    *
    */
@@ -418,7 +418,7 @@ class Bicycle {
    * \returns a 20 x 20 matrix of dq/dt and du/dt coefficients
    */
   Matrix mass_matrix_full() const;
-  
+
   /** Form linearized input coefficient matrix
    *
    * \returns a 20 x 22 matrix
@@ -435,7 +435,7 @@ class Bicycle {
    *
    */
   Vector coordinate_derivatives() const;
-  
+
   /** Speed derivatives
    *
    */
