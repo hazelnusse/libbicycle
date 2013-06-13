@@ -220,12 +220,12 @@ def derivation():
     # Reference frames
     print("Defining orientations...")
     N = ReferenceFrame('N')                    # Inertial frame
-    Y = N.orientnew('Y', 'Axis', [q[0], N.z])  # Rear yaw frame (heading)
-    L = Y.orientnew('L', 'Axis', [q[1], Y.x])  # Rear lean frame (roll)
-    R = L.orientnew('R', 'Axis', [q[2], L.y])  # Fixed to rear frame
-    RW = R.orientnew('RW', 'Axis', [q[4], R.y])# Fixed to rear wheel
-    F = R.orientnew('F', 'Axis', [q[3], R.z])  # Fixed to front frame (fork)
-    FW = F.orientnew('FW', 'Axis', [q[5], F.y])# Fixed to front wheel
+    Y = N.orientnew('Y', 'Axis', [q[0], N.z])  # Rear yaw frame
+    L = Y.orientnew('L', 'Axis', [q[1], Y.x])  # Rear roll frame
+    R = L.orientnew('R', 'Axis', [q[2], L.y])  # Rear assembly fixed frame
+    RW = R.orientnew('RW', 'Axis', [q[4], R.y])# Rear wheel fixed frame
+    F = R.orientnew('F', 'Axis', [q[3], R.z])  # Front assembly fixed frame
+    FW = F.orientnew('FW', 'Axis', [q[5], F.y])# Front wheel fixed frame
     # Camera related references frames
     cam_angles = symbols('azimuth elevation twist')
     cam_position = symbols('cam_x cam_y cam_z')
@@ -554,89 +554,93 @@ def derivation():
     cross_terms = np.array([ui*uj for ui, uj in cross_terms], dtype=object)[non_zero_columns]
 
     # Output code generation
-    code = NumpyArrayOutput(['<cmath>', '"bicycle.h"'], namespaces=['std'])
+    code = NumpyArrayOutput(class_name='Bicycle',
+                            includes=['<cmath>', '"bicycle.h"'],
+                            enclosing_namespace='bicycle',
+                            using_declarations=['::std::sin', '::std::cos',
+                                                '::std::pow', '::std::sqrt'])
     code.add_regex(r'([_0-9a-zA-Z]+)_(rear|front)', r'\2_.\1')
     code.set_states(q+u, 'state_')
 
     print("Generating OpenGL modelview matrices...")
-    code.generate(gc_r_ogl, "Bicycle::gc_r_ogl")
-    code.generate(wc_r_ogl, "Bicycle::wc_r_ogl")
-    code.generate(mc_r_ogl, "Bicycle::mc_r_ogl")
-    code.generate(gc_f_ogl, "Bicycle::gc_f_ogl")
-    code.generate(wc_f_ogl, "Bicycle::wc_f_ogl")
-    code.generate(mc_f_ogl, "Bicycle::mc_f_ogl")
-    code.generate(N_ogl, "Bicycle::N_ogl")
+    code.generate(gc_r_ogl, "gc_r_ogl")
+    code.generate(wc_r_ogl, "wc_r_ogl")
+    code.generate(mc_r_ogl, "mc_r_ogl")
+    code.generate(gc_f_ogl, "gc_f_ogl")
+    code.generate(wc_f_ogl, "wc_f_ogl")
+    code.generate(mc_f_ogl, "mc_f_ogl")
+    code.generate(N_ogl, "N_ogl")
 
     print("Generating kinematics related outputs...")
-    code.generate(wc_r_rel_gc_r, "Bicycle::rear_wheel_center_point")
-    code.generate(mc_r_rel_gc_r, "Bicycle::rear_mass_center_point")
-    code.generate(sa_r_rel_gc_r, "Bicycle::rear_steer_axis_point")
-    code.generate(wc_f_rel_gc_r, "Bicycle::front_wheel_center_point")
-    code.generate(mc_f_rel_gc_r, "Bicycle::front_mass_center_point")
-    code.generate(sa_f_rel_gc_r, "Bicycle::front_steer_axis_point")
-    code.generate(gc_f_rel_gc_r, "Bicycle::front_ground_contact_point")
+    code.generate(wc_r_rel_gc_r, "rear_wheel_center_point")
+    code.generate(mc_r_rel_gc_r, "rear_mass_center_point")
+    code.generate(sa_r_rel_gc_r, "rear_steer_axis_point")
+    code.generate(wc_f_rel_gc_r, "front_wheel_center_point")
+    code.generate(mc_f_rel_gc_r, "front_mass_center_point")
+    code.generate(sa_f_rel_gc_r, "front_steer_axis_point")
+    code.generate(gc_f_rel_gc_r, "front_ground_contact_point")
 
     print("Generating wheel path radii outputs...")
-    code.generate(path_radii, "Bicycle::path_radii")
+    code.generate(path_radii, "path_radii")
 
     print("Generating kinetic and potential energy outputs...")
-    code.generate(ke_pe, "Bicycle::ke_pe")
+    code.generate(ke_pe, "ke_pe")
 
     print("Generating Basu-Mandal rear wheel center coordinates...")
-    code.generate(q6q7_from_bm, "Bicycle::q6q7_from_bm")
+    code.generate(q6q7_from_bm, "q6q7_from_bm")
 
     print("Generating Basu-Mandal rear wheel center velocity...")
-    code.generate(xyz_dot_bm, "Bicycle::xyz_dot_bm")
+    code.generate(xyz_dot_bm, "xyz_dot_bm")
 
     print("Generating configuration constraint (f_c) code...")
-    code.generate(f_c, "Bicycle::f_c")
+    code.generate(f_c, "f_c")
     print("Generating configuration constraint partial derivatives code" +
           "(f_c_dq) code...")
-    code.generate(f_c_dq, "Bicycle::f_c_dq")
+    code.generate(f_c_dq, "f_c_dq")
 
     print("Generating constraint coefficient matrix (f_v_du) code...")
-    code.generate(f_v_du, "Bicycle::f_v_du")
+    code.generate(f_v_du, "f_v_du")
     print("Generating constraint coefficient Jacobian matrix " +
           "(f_v_dudq) code...")
-    code.generate(f_v_dudq, "Bicycle::f_v_dudq")
+    code.generate(f_v_dudq, "f_v_dudq")
     print("Generating constraint coefficient matrix " +
           "time derivative (f_v_dudt) code...")
-    code.generate(f_v_dudt, "Bicycle::f_v_dudt")
+    code.generate(f_v_dudt, "f_v_dudt")
     print("Generating constraint coefficient Jacobian matrix " +
           "time derivative (f_v_dudtdq) code...")
-    code.generate(f_v_dudtdq, "Bicycle::f_v_dudtdq")
+    code.generate(f_v_dudtdq, "f_v_dudtdq")
 
     print("Generating kinematic differential equations (f_1, f_1_dq, f_1_du)")
-    code.generate(f_1, "Bicycle::f_1")
-    code.generate(f_1_dq, "Bicycle::f_1_dq")
-    code.generate(f_1_du, "Bicycle::f_1_du")
+    code.generate(f_1, "f_1")
+    code.generate(f_1_dq, "f_1_dq")
+    code.generate(f_1_du, "f_1_du")
 
     print("Generating mass matrix (gif_dud) code...")
-    code.generate(gif_dud, "Bicycle::gif_dud")
+    code.generate(gif_dud, "gif_dud")
     print("Generating mass matrix partial derivative (gif_dud_dq) code...")
-    code.generate(gif_dud_dq, "Bicycle::gif_dud_dq")
+    code.generate(gif_dud_dq, "gif_dud_dq")
     print("Generating coriolis/centripetal (gif_ud_zero) code...")
-    code.generate(gif_ud_zero, "Bicycle::gif_ud_zero")
+    code.generate(gif_ud_zero, "gif_ud_zero")
     print("Generating steady coriolis/centripetal (gif_ud_zero_steady) code...")
-    code.generate(gif_ud_zero_steady, "Bicycle::gif_ud_zero_steady")
+    code.generate(gif_ud_zero_steady, "gif_ud_zero_steady")
 
     print("Generating steady coriolis/centripetal (gif_ud_zero_steady_dudu) code...")
-    code.generate(gif_ud_zero_steady_dudu, "Bicycle::gif_ud_zero_steady_dudu")
+    code.generate(gif_ud_zero_steady_dudu, "gif_ud_zero_steady_dudu")
 
     print("Generating non-zero steady coriolis/centripetal (gif_ud_zero_steady_cross_terms) code...")
-    code.generate(cross_terms, "Bicycle::gif_ud_zero_steady_cross_terms")
+    code.generate(cross_terms, "gif_ud_zero_steady_cross_terms")
 
     print("Generating partial derivatives of coriolis/centripetal " +
           "(gif_ud_zero_dq, gif_ud_zero_du) code...")
-    code.generate(gif_ud_zero_dq, "Bicycle::gif_ud_zero_dq")
-    code.generate(gif_ud_zero_du, "Bicycle::gif_ud_zero_du")
+    code.generate(gif_ud_zero_dq, "gif_ud_zero_dq")
+    code.generate(gif_ud_zero_du, "gif_ud_zero_du")
 
     print("Generating generalized active forces (gaf) code...")
-    code.generate(gaf, "Bicycle::gaf")
+    code.generate(gaf, "gaf")
     print("Generating generalized active forces partial derivative matrices " +
           "(gaf_dq, gaf_dr) code...")
-    code.generate(gaf_dq, "Bicycle::gaf_dq")
-    code.generate(gaf_dr, "Bicycle::gaf_dr")
+    code.generate(gaf_dq, "gaf_dq")
+    code.generate(gaf_dr, "gaf_dr")
 
     code.output("bicycle_generated.cc")
 

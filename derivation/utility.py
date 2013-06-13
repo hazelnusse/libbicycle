@@ -3,7 +3,12 @@ import re
 import numpy as np
 
 class NumpyArrayOutput(object):
-    def __init__(self, includes=None, namespaces=None):
+    def __init__(self,
+                 class_name=None,
+                 includes=None,
+                 enclosing_namespace=None,
+                 using_namespace_directives=None,
+                 using_declarations=None):
         """A class to generate flat C-arrays from numpy nd arrays.
 
         If you want certain files to be included or namespaces to be used, pass
@@ -12,7 +17,14 @@ class NumpyArrayOutput(object):
         local includes.
 
         """
-        self.s = self._prefix(includes, namespaces)
+
+        if class_name is not None:
+            self._class_name = class_name
+        else:
+            self._class_name = ""
+
+        self.s = self._prefix(includes, enclosing_namespace,
+                              using_namespace_directives, using_declarations)
         self.subs_dict = {}
         self.regex_list = []
         self.state_prefix = ''
@@ -40,8 +52,12 @@ class NumpyArrayOutput(object):
             else:
                 expressions_flat[i] = ai.subs(self.subs_dict)
 
-        function_signature = "void {0}(double ar[{1}])".format(functionname,
-                                                        expressions_flat.size)
+        if self._class_name != "":
+            member_function_name = self._class_name + "::" + functionname
+            function_signature = "void {0}(double ar[{1}])".format(member_function_name, expressions_flat.size)
+        else:
+            function_signature = "void {0}(double ar[{1}])".format(functionname, expressions_flat.size)
+
         if const_function:
             function_signature += " const"
         s += "//  " + function_signature + ";\n"
@@ -50,7 +66,7 @@ class NumpyArrayOutput(object):
         repl, redu = cse(expressions_flat, symbols=numbered_symbols("z"))
 
         if len(repl):
-            s += "  double * z = new double[{0}];\n\n".format(len(repl))
+            s += "  double z[{0}];\n\n".format(len(repl))
 
         if callbacks is not None:
             for c in callbacks:
@@ -82,9 +98,7 @@ class NumpyArrayOutput(object):
             s += tmp
             s += ";\n"
 
-        s += "\n  delete [] z;\n}\n"
-
-        self.s += s
+        self.s += s + "}\n"
 
         return s
 
@@ -93,19 +107,38 @@ class NumpyArrayOutput(object):
         the file exists, so this will overwrite existing files.
 
         """
+
+        if self._enclosing_namespace:
+            self.s += "\n}\n"
+
         f = open(filename, "w")
         f.write(self.s)
         f.close()
 
-    def _prefix(self, includes, namespaces):
+    def _prefix(self, includes, enclosing_namespace,
+                using_namespace_directives, using_declarations):
         s = ""
+
         if includes is not None:
             for i in includes:
                 s += "#include " + i + "\n"
-        if namespaces is not None:
+
+        if enclosing_namespace is not None:
+            s += "\nnamespace " + enclosing_namespace + " {\n"
+            self._enclosing_namespace = True
+        else:
+            self._enclosing_namespace = False
+
+        if using_namespace_directives is not None:
             s += "\n"
-            for n in namespaces:
+            for n in using_namespace_directives:
                 s += "using namespace " + n + ";\n"
+        
+        if using_declarations is not None:
+            s += "\n"
+            for n in using_declarations:
+                s += "using " + n + ";\n"
+
         return s
 
     def set_states(self, variables, prefix):
