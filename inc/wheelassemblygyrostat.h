@@ -19,11 +19,11 @@ namespace bicycle {
  * */
 class WheelAssemblyGyrostat {
  public:
-  /** Default constructor.
-   *
-   * All values are zero-initialized by default.
-   */
-  WheelAssemblyGyrostat();
+//  /** Default constructor.
+//   *
+//   * All values are zero-initialized by default.
+//   */
+//  WheelAssemblyGyrostat();
 
   /** Stream insertion operator.
    *
