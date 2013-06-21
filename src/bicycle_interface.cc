@@ -128,7 +128,7 @@ void Bicycle::set_dependent_coordinate(int i)
 
 void Bicycle::set_dependent_speeds(const std::set<int> & speed_indices)
 {
-  if (speed_indices.size() != m) {
+  if (speed_indices.size() != static_cast<std::size_t>(m)) {
     std::cerr << "Three dependent speeds must be specified." << std::endl;
   } else if (std::all_of(speed_indices.begin(), speed_indices.end(),
                [](int i){ return (i < 0) || (i > 5); })) {
@@ -201,7 +201,8 @@ std::ostream & operator<<(std::ostream & os, const Bicycle & b)
      << "Front assembly:" << std::endl
      << b.front_;
   os.precision(16);
-  os << "ls  = " << std::setw(25) << b.ls_ << std::endl
+  os << "Ts  = " << std::setw(25) << b.steer_torque_ << std::endl
+     << "ls  = " << std::setw(25) << b.ls_ << std::endl
      << "g   = " << std::setw(25) << b.g_  << std::endl
      << "State:" << std::endl 
      << " x[0] = " << std::setw(25) <<  b.state_[0] << "    (yaw)" << std::endl
