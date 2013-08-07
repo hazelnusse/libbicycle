@@ -21,10 +21,10 @@ TEST(NormalForcesTest, BenchmarkReferenceConfiguration)
   EXPECT_DOUBLE_EQ(rear_normal, cf[2]);
   EXPECT_DOUBLE_EQ(front_normal, cf[5]);
 
-  EXPECT_NEAR(0.0, cf[0], 1e-14);     // Longitudinal force
-  EXPECT_NEAR(0.0, cf[1], 1e-14);     // Lateral force
-  EXPECT_NEAR(0.0, cf[3], 1e-14);     // Longitudinal force
-  EXPECT_NEAR(0.0, cf[4], 1e-14);     // Lateral force
+  EXPECT_NEAR(0.0, cf[0], 1e-13);     // Longitudinal force
+  EXPECT_NEAR(0.0, cf[1], 1e-13);     // Lateral force
+  EXPECT_NEAR(0.0, cf[3], 1e-13);     // Longitudinal force
+  EXPECT_NEAR(0.0, cf[4], 1e-13);     // Lateral force
 }
 
 TEST(NormalForcesTest, VerticalSteerAxis)

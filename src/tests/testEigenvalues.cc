@@ -1,5 +1,6 @@
 #include <cmath>
 #include <complex>
+#include <set>
 #include <Eigen/Dense>
 #include "gtest/gtest.h"
 #include "benchmark_eigenvalues.h"
@@ -10,12 +11,13 @@
 
 using namespace Eigen;
 
-bool complex_less_than(std::complex<double> l, std::complex<double> r)
+namespace std {
+bool operator<(std::complex<double> l, std::complex<double> r)
 {
-  double l_mag_2 = l.real()*l.real() + l.imag()*l.imag();
-  double r_mag_2 = r.real()*r.real() + r.imag()*r.imag();
-  if (l_mag_2 != r_mag_2) { // they have different magnitudes
-    return l_mag_2 < r_mag_2;
+  double l_norm = ::std::norm(l);
+  double r_norm= ::std::norm(r);
+  if (l_norm != r_norm) { // they have different magnitudes
+    return l_norm < r_norm;
   } else {                  // magnitudes are equal
     if (l == r) {    // they are exactly equal
       return false;
@@ -26,6 +28,7 @@ bool complex_less_than(std::complex<double> l, std::complex<double> r)
       return l_theta < r_theta;
     }
   }
+}
 }
 
 TEST(UprightSteadyForwardCruise, BenchmarkEigenvalues)
@@ -72,13 +75,18 @@ TEST(UprightSteadyForwardCruise, BenchmarkEigenvalues)
     A_min(3, 3) = A_full(11, 8);
 
     MatrixXcd ei_calculated = A_min.eigenvalues().transpose();
-    std::sort(ei_calculated.data(), ei_calculated.data() + 4, complex_less_than);
     Matrix<std::complex<double>, 1, 4> ei = e.row(i);
-    std::sort(ei.data(), ei.data() + 4, complex_less_than);
+    std::set<std::complex<double>> unmatched_eigenvalues;
+    for (int j = 0; j < 4; ++j)
+      unmatched_eigenvalues.insert(ei(0, j));
+
     for (int j = 0; j < 4; ++j) {
-      EXPECT_NEAR(ei(0, j).real(), ei_calculated(0, j).real(), 1e-12);
-      EXPECT_NEAR(ei(0, j).imag(), ei_calculated(0, j).imag(), 1e-12);
+      for (int k = 0; k < 4; ++k) {
+        if (std::abs(ei(0, j) - ei_calculated(0, k)) < 1e-12)
+          unmatched_eigenvalues.erase(ei(0, j));
+      }
     }
+    EXPECT_TRUE(unmatched_eigenvalues.empty());
   }
 }
 
