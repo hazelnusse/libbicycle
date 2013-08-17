@@ -13,15 +13,15 @@ Two parameters are trivial:
     Rear wheel assembly:    m           ==  mR + mB
     Front wheel assembly:   m           ==  mF + mH
 
-The remaining 15 (23 - 16) parameters that need to be calculated are:
+The remaining 15 (23 - 8) parameters that need to be calculated are:
     Rear wheel assembly:    Ixx, Iyy, Izz, Ixz, a, b, c
     Front wheel assembly:   Ixx, Iyy, Izz, Ixz, a, b, c
     Steer axis offset:      ls
 """
 
-from sympy import symbols, ccode, simplify, sin, cos, numbered_symbols, cse
+from sympy import symbols, ccode, simplify, trigsimp, sin, cos, numbered_symbols, cse, latex
 from sympy.physics.mechanics import (Vector, ReferenceFrame, Point,
-        inertia_of_point_mass, inertia)
+        inertia_of_point_mass, inertia, mprint, mlatex)
 Vector.simp = False
 from wheelassemblygyrostat import WheelAssemblyGyrostat
 import re
@@ -109,6 +109,58 @@ expressions = [
     ("front_.b", FO_HO_mc.pos_from(FO) & R.z),
     ("front_.c", (c*N.x + (rF + tF)*N.z) & R.x),
     ("ls_", ((rR + tR)*N.z + w * N.x - (rF + tF)*N.z) & R.z)]
+
+###############################################################################
+# The following was used for preparing my thesis. It turned out that grouping
+# the inertias term by term did a better job of simplifying things than
+# simplify() did.
+###############################################################################
+IRear_l = [IR_RO,
+           IB_BO,
+           inertia_of_point_mass(mR, RO.pos_from(RO_BO_mc).express(R), R),
+           inertia_of_point_mass(mB, BO.pos_from(RO_BO_mc).express(R), R)]
+IFront_l = [IF_FO,
+            IH_HO,
+            inertia_of_point_mass(mF, FO.pos_from(FO_HO_mc).express(R), R),
+            inertia_of_point_mass(mH, HO.pos_from(FO_HO_mc).express(R), R)]
+sl = symbols('s_\lambda')
+cl = symbols('c_\lambda')
+
+# The following symbols were used to make the latex output nicer. They will not
+# work for the numerical code generation, however. If you want to generate the
+# latex output, use the following symbols (i.e., replace the definitions above
+# with these).
+# w, c, l = symbols('w c w.lambda')
+# rR, rF, tR, tF = symbols('r_R r_F t_R t_F')
+# mR, mF, mH, mB = symbols('m_R m_F m_H m_B')
+# IRxx, IRyy = symbols('I_Rxx I_Ryy')
+# IBxx, IByy, IBzz, IBxz = symbols('I_Bxx I_Byy I_Bzz I_Bxz')
+# IHxx, IHyy, IHzz, IHxz = symbols('I_Hxx I_Hyy I_Hzz I_Hxz')
+# IFxx, IFyy = symbols('I_Fxx I_Fyy')
+# xB, zB, xH, zH = symbols('x_B z_B x_H z_H')
+
+assembly_inertia_pairs = [("Rear", IRear_l), ("Front", IFront_l)]
+terms = ["xx", "yy", "zz", "xz"]
+prefixes = ["r", "f"]
+relationships = ""
+for i, (assy, I_assy) in enumerate(assembly_inertia_pairs):
+    relationships += "% " + assy + "\n"
+    prefix = prefixes[i]
+    for j, uv_pair in enumerate([(R.x, R.x), (R.y, R.y), (R.z, R.z), (R.x, R.z)]):
+        relationships += "I_{" + prefix + terms[j] + "} &=\n"
+        uva, uvb = uv_pair
+        for k in range(4):
+            scalar = (uva & I_assy[k] & uvb).subs(sin(l), sl).subs(cos(l), cl)
+            scalar = simplify(scalar)
+            relationships += latex(scalar)
+            if  k != 3:
+                relationships += "+ \n"
+        relationships += " \\\\\n%\n"
+
+file = open("param_conversion.tex", "w")
+file.write(relationships)
+file.close()
+###############################################################################
 
 eqns_to_cse = [rhs for lhs, rhs in expressions]
 repl, redu = cse(eqns_to_cse, symbols=numbered_symbols("z"))
