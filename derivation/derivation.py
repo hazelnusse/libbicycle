@@ -19,7 +19,8 @@ from sympy import symbols, zeros, pi, S, Matrix, solve
 from sympy.physics.mechanics import *
 import numpy as np
 Vector.simp = False
-from wheelassemblygyrostat import WheelAssemblyGyrostat
+from wheelassemblygyrostat import (WheelAssemblyGyrostatParams,
+        WheelAssemblyGyrostatInputs)
 from utility import NumpyArrayOutput
 from benchmark_parameters import (gyrostat_benchmark_parameters,
     gyrostat_benchmark_reference_configuration,
@@ -95,11 +96,13 @@ def derivation():
     # * $R, r: Wheel major radii, tire cross section radii
     # * $a, b$: distances from wheel center to mass center in x and z directions
     # * $c$: distances from wheel center to steer axis point in x direction
-    rear = WheelAssemblyGyrostat('rear')
-    front = WheelAssemblyGyrostat('front')
+    rear_params = WheelAssemblyGyrostatParams('rear')
+    front_params = WheelAssemblyGyrostatParams('front')
+    rear_inputs = WheelAssemblyGyrostatInputs('rear')
+    front_inputs = WheelAssemblyGyrostatInputs('front')
 
     # Gravitational constant, time
-    ls, g, t = symbols('ls_ g_ t')
+    ls, g, gt, t = symbols('ls_ g_ gt_ t')
 
     ## Generalized coordinates
     #
@@ -207,19 +210,20 @@ def derivation():
     T_s = symbols('steer_torque_')
     # Control/disturbance input vector, 22 x 1
     r = np.array(
-        [rear.Tw,                       # Rear wheel torque
-         rear.Tx, rear.Ty, rear.Tz,     # Torques on rear frame
-         rear.Gx, rear.Gy, rear.Gz,     # Rear wheel ground contact forces
-         rear.Fx, rear.Fy, rear.Fz,     # Forces at rear mass center
-         front.Tw,                      # Front wheel torque
-         front.Tx, front.Ty, front.Tz,  # Torques on front frame
-         front.Gx, front.Gy, front.Gz,  # Front wheel ground contact forces
-         front.Fx, front.Fy, front.Fz,  # Forces at front mass center
+        [rear_inputs.Tw,                       # Rear wheel torque
+         rear_inputs.Tx, rear_inputs.Ty, rear_inputs.Tz,     # Torques on rear frame
+         rear_inputs.Gx, rear_inputs.Gy, rear_inputs.Gz,     # Rear wheel ground contact forces
+         rear_inputs.Fx, rear_inputs.Fy, rear_inputs.Fz,     # Forces at rear mass center
+         front_inputs.Tw,                      # Front wheel torque
+         front_inputs.Tx, front_inputs.Ty, front_inputs.Tz,  # Torques on front frame
+         front_inputs.Gx, front_inputs.Gy, front_inputs.Gz,  # Front wheel ground contact forces
+         front_inputs.Fx, front_inputs.Fy, front_inputs.Fz,  # Forces at front mass center
          T_s, g])                       # Steer torque, gravity
 
     # Reference frames
     print("Defining orientations...")
     N = ReferenceFrame('N')                    # Inertial frame
+    H = N.orientnew('H', 'Axis', [-gt, N.x])   # Horizontal frame
     Y = N.orientnew('Y', 'Axis', [q[0], N.z])  # Rear yaw frame
     L = Y.orientnew('L', 'Axis', [q[1], Y.x])  # Rear roll frame
     R = L.orientnew('R', 'Axis', [q[2], L.y])  # Rear assembly fixed frame
@@ -285,18 +289,18 @@ def derivation():
     gc_r.set_vel(N, u[6]*wyf_x_r + u[7]*wyf_y_r + u[8]*Yz_R)
 
     # Rear wheel center
-    wc_r = gc_r.locatenew('wc_r', -(rear.r*Yz_R + rear.R*wc_tc_uv_r))
+    wc_r = gc_r.locatenew('wc_r', -(rear_params.r*Yz_R + rear_params.R*wc_tc_uv_r))
     wc_r.v2pt_theory(gc_r, N, RW)
     wc_r.set_acc(N, wc_r.vel(N).diff(t, R).subs(qd_u_dict)
                   + (R.ang_vel_in(N) ^ wc_r.vel(N)).subs(qd_u_dict))
 
     # Rear mass center
-    mc_r = wc_r.locatenew('mc_r', rear.a*R.x + rear.b*R.z)
+    mc_r = wc_r.locatenew('mc_r', rear_params.a*R.x + rear_params.b*R.y + rear_params.c*R.z)
     mc_r.v2pt_theory(wc_r, N, R)
     mc_r.a2pt_theory(wc_r, N, R)
 
     # Rear steer axis point
-    sa_r = wc_r.locatenew('sa_r', rear.c*R.x)
+    sa_r = wc_r.locatenew('sa_r', rear_params.d*R.x)
     sa_r.v2pt_theory(wc_r, N, R)
 
     print("Defining kinematics of front assembly points...")
@@ -305,18 +309,18 @@ def derivation():
     gc_f.set_vel(N, u[9]*wyf_x_f + u[10]*wyf_y_f + u[11]*Yz_F)
 
     # Front wheel center
-    wc_f = gc_f.locatenew('wc_f', -(front.r*Yz_F + front.R*wc_tc_uv_f))
+    wc_f = gc_f.locatenew('wc_f', -(front_params.r*Yz_F + front_params.R*wc_tc_uv_f))
     wc_f.v2pt_theory(gc_f, N, FW)
     wc_f.set_acc(N, wc_f.vel(N).diff(t, F).subs(qd_u_dict)
                   + (F.ang_vel_in(N) ^ wc_f.vel(N)).subs(qd_u_dict))
 
     # Front mass center
-    mc_f = wc_f.locatenew('mc_f', front.a*F.x + front.b*F.z)
+    mc_f = wc_f.locatenew('mc_f', front_params.a*F.x + front_params.b*F.y + front_params.c*F.z)
     mc_f.v2pt_theory(wc_f, N, F)
     mc_f.a2pt_theory(wc_f, N, F)
 
     # Front steer axis point
-    sa_f = wc_f.locatenew('sa_f', front.c*F.x)
+    sa_f = wc_f.locatenew('sa_f', front_params.d*F.x)
     sa_f.v2pt_theory(wc_f, N, F)
 
     # Connect assemblies together so we can form holonomic constraint
@@ -428,33 +432,35 @@ def derivation():
     gc_f_pv, mc_f_pv = partial_velocity([gc_f.vel(N), mc_f.vel(N)], u, N)
 
     print("Defining applied forces and torques...")
-    F_gc_r = rear.Gx*wyf_x_r + rear.Gy*wyf_y_r + rear.Gz*Y.z
-    F_gc_f = front.Gx*wyf_x_f + front.Gy*wyf_y_f + front.Gz*Y.z
-    F_mc_r = rear.Fx*R.x + rear.Fy*R.y + rear.Fz*R.z + rear.m*g*Y.z
-    F_mc_f = front.Fx*F.x + front.Fy*F.y + front.Fz*F.z + front.m*g*Y.z
-    T_R = rear.Tx*R.x + rear.Ty*R.y + rear.Tz*R.z - rear.Tw*R.y - T_s*R.z
-    T_F = front.Tx*F.x + front.Ty*F.y + front.Tz*F.z - front.Tw*F.y + T_s*F.z
-    T_RW = rear.Tw*R.y
-    T_FW = front.Tw*F.y
+    F_gc_r = rear_inputs.Gx*wyf_x_r + rear_inputs.Gy*wyf_y_r + rear_inputs.Gz*Y.z
+    F_gc_f = front_inputs.Gx*wyf_x_f + front_inputs.Gy*wyf_y_f + front_inputs.Gz*Y.z
+    F_mc_r = rear_inputs.Fx*R.x + rear_inputs.Fy*R.y + rear_inputs.Fz*R.z + rear_inputs.m*g*H.z
+    F_mc_f = front_inputs.Fx*F.x + front_inputs.Fy*F.y + front_inputs.Fz*F.z + front_inputs.m*g*H.z
+    T_R = rear_inputs.Tx*R.x + rear_inputs.Ty*R.y + rear_inputs.Tz*R.z - rear_inputs.Tw*R.y - T_s*R.z
+    T_F = front_inputs.Tx*F.x + front_inputs.Ty*F.y + front_inputs.Tz*F.z - front_inputs.Tw*F.y + T_s*F.z
+    T_RW = rear_inputs.Tw*R.y
+    T_FW = front_inputs.Tw*F.y
 
     print("Defining inertia dyadic of each rigid body...")
-    I_r = inertia(R, rear.Ixx, rear.Iyy, rear.Izz, 0, 0, rear.Ixz)
-    I_f = inertia(F, front.Ixx, front.Iyy, front.Izz, 0, 0, front.Ixz)
+    I_r = inertia(R, rear_params.Ixx, rear_params.Iyy, rear_params.Izz,
+                     rear_params.Ixy, rear_params.Iyz, rear_params.Ixz)
+    I_f = inertia(F, front_params.Ixx, front_params.Iyy, front_params.Izz,
+                     front_params.Ixy, rear_params.Iyz, front_params.Ixz)
 
     # Form kinetic energy of rear and front assemblies
     print("Forming kinetic energy expressions")
-    ke_rear_t = rear.m / 2.0 * (mc_r.vel(N).magnitude() ** 2)
+    ke_rear_t = rear_params.m / 2.0 * (mc_r.vel(N).magnitude() ** 2)
     ke_rear_a = (((R.ang_vel_in(N) & (I_r & R.ang_vel_in(N)))
-                  + rear.J * (RW.ang_vel_in(R).magnitude() ** 2)) / 2.0
-                 + rear.J * (R.ang_vel_in(N) & RW.ang_vel_in(R)))
+                  + rear_params.J * (RW.ang_vel_in(R).magnitude() ** 2)) / 2.0
+                 + rear_params.J * (R.ang_vel_in(N) & RW.ang_vel_in(R)))
 
-    ke_front_t = front.m / 2.0 * (mc_f.vel(N).magnitude() ** 2)
+    ke_front_t = front_params.m / 2.0 * (mc_f.vel(N).magnitude() ** 2)
     ke_front_a = (((F.ang_vel_in(N) & (I_f & F.ang_vel_in(N)))
-                   + front.J * (FW.ang_vel_in(F).magnitude() ** 2)) / 2.0
-                  + front.J * (F.ang_vel_in(N) & FW.ang_vel_in(F)))
+                   + front_params.J * (FW.ang_vel_in(F).magnitude() ** 2)) / 2.0
+                  + front_params.J * (F.ang_vel_in(N) & FW.ang_vel_in(F)))
 
-    pe_rear = -rear.m * g * (mc_r.pos_from(gc_r) & Y.z)
-    pe_front = -front.m * g * (mc_f.pos_from(gc_f) & Y.z)
+    pe_rear = -rear_params.m * g * (mc_r.pos_from(gc_r) & Y.z)
+    pe_front = -front_params.m * g * (mc_f.pos_from(gc_f) & Y.z)
 
     ke_pe = np.array([ke_rear_t, ke_rear_a, ke_front_t, ke_front_a, pe_rear,
         pe_front])
@@ -508,14 +514,14 @@ def derivation():
                 + (T_FW & FW_F_pav[i]))
 
         # Generalized inertia forces
-        gif[i] = - (rear.m*(a_r & mc_r_pv[i])
-                  + front.m*(a_f & mc_f_pv[i])
+        gif[i] = - (rear_params.m*(a_r & mc_r_pv[i])
+                  + front_params.m*(a_f & mc_f_pv[i])
                   + (((I_r & alpha_r_n) + (w_r_n ^ (I_r & w_r_n)) +
-                      rear.J*(alpha_rw_r + (w_r_n ^ w_rw_r))) & R_N_pav[i])
+                      rear_params.J*(alpha_rw_r + (w_r_n ^ w_rw_r))) & R_N_pav[i])
                   + (((I_f & alpha_f_n) + (w_f_n ^ (I_f & w_f_n)) +
-                      front.J*(alpha_fw_f + (w_f_n ^ w_fw_f))) & F_N_pav[i])
-                  + rear.J*((alpha_r_n + alpha_rw_r) & RW_R_pav[i])
-                  + front.J*((alpha_f_n + alpha_fw_f) & FW_F_pav[i]))
+                      front_params.J*(alpha_fw_f + (w_f_n ^ w_fw_f))) & F_N_pav[i])
+                  + rear_params.J*((alpha_r_n + alpha_rw_r) & RW_R_pav[i])
+                  + front_params.J*((alpha_f_n + alpha_fw_f) & FW_F_pav[i]))
 
         # Coriolis and centripel terms of generalized inertia forces
         gif_ud_zero[i] = gif[i].subs(ud_zero_dict)
@@ -559,7 +565,8 @@ def derivation():
                             enclosing_namespace='bicycle',
                             using_declarations=['::std::sin', '::std::cos',
                                                 '::std::pow', '::std::sqrt'])
-    code.add_regex(r'([_0-9a-zA-Z]+)_(rear|front)', r'\2_.\1')
+    code.add_regex(r'([_0-9a-zA-Z]+)_(rear_params|front_params)', r'\2_params.\1')
+    code.add_regex(r'([_0-9a-zA-Z]+)_(rear_inputs|front_inputs)', r'\2_inputs.\1')
     code.set_states(q+u, 'state_')
 
     print("Generating OpenGL modelview matrices...")
